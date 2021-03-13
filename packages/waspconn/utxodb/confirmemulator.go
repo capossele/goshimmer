@@ -57,7 +57,7 @@ func (ce *ConfirmEmulator) PostTransaction(tx *ledgerstate.Transaction) error {
 		fmt.Printf("utxodb.ConfirmEmulator CONFIRMED IMMEDIATELY: %s\n", tx.ID().String())
 		return nil
 	}
-	if err := ce.UtxoDB.AddTransaction().ValidateTransaction(tx); err != nil {
+	if err := ce.UtxoDB.CheckTransaction(tx); err != nil {
 		return err
 	}
 	for txid, ptx := range ce.pendingTransactions {
