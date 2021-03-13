@@ -2,6 +2,7 @@ package utxodb
 
 import (
 	"fmt"
+	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxodb"
 	"math/rand"
 	"sync"
 	"time"
@@ -17,7 +18,7 @@ type pendingTransaction struct {
 
 // implements valuetangle.ValueTangle by wrapping UTXODB and adding a fake confirmation delay
 type ConfirmEmulator struct {
-	UtxoDB                 *UtxoDB
+	UtxoDB                 *utxodb.UtxoDB
 	confirmTime            time.Duration
 	randomize              bool
 	confirmFirstInConflict bool
@@ -28,7 +29,7 @@ type ConfirmEmulator struct {
 
 func NewConfirmEmulator(confirmTime time.Duration, randomize bool, confirmFirstInConflict bool) *ConfirmEmulator {
 	ce := &ConfirmEmulator{
-		UtxoDB:                 New(),
+		UtxoDB:                 utxodb.New(),
 		pendingTransactions:    make(map[ledgerstate.TransactionID]*pendingTransaction),
 		confirmTime:            confirmTime,
 		randomize:              randomize,
@@ -56,7 +57,7 @@ func (ce *ConfirmEmulator) PostTransaction(tx *ledgerstate.Transaction) error {
 		fmt.Printf("utxodb.ConfirmEmulator CONFIRMED IMMEDIATELY: %s\n", tx.ID().String())
 		return nil
 	}
-	if err := ce.UtxoDB.ValidateTransaction(tx); err != nil {
+	if err := ce.UtxoDB.AddTransaction().ValidateTransaction(tx); err != nil {
 		return err
 	}
 	for txid, ptx := range ce.pendingTransactions {
