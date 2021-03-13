@@ -62,6 +62,7 @@ func (u *UtxoDB) GetAddressOutputs(addr ledgerstate.Address) []ledgerstate.Outpu
 	return u.getAddressOutputs(addr)
 }
 
+// GetAddressBalances return all colored balances of the address
 func (u *UtxoDB) GetAddressBalances(addr ledgerstate.Address) map[ledgerstate.Color]uint64 {
 	ret := make(map[ledgerstate.Color]uint64)
 	outputs := u.GetAddressOutputs(addr)
