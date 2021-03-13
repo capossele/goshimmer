@@ -19,7 +19,7 @@ func (u *UtxoDB) AddTransaction(tx *ledgerstate.Transaction) error {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
-	if err := u.checkTransaction(tx); err != nil {
+	if err := u.CheckTransaction(tx); err != nil {
 		return err
 	}
 	// delete consumed (referenced) outputs from the ledger
@@ -160,8 +160,8 @@ func (u *UtxoDB) collectConsumedOutputs(tx *ledgerstate.Transaction) ([]ledgerst
 	return ret, nil
 }
 
-// checkTransaction checks the same way as ledgerstate
-func (u *UtxoDB) checkTransaction(tx *ledgerstate.Transaction) error {
+// CheckTransaction checks consistency of the transaction the same way as ledgerstate
+func (u *UtxoDB) CheckTransaction(tx *ledgerstate.Transaction) error {
 	inputs, err := u.collectConsumedOutputs(tx)
 	if err != nil {
 		return err
