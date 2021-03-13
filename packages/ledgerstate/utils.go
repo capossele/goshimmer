@@ -58,7 +58,7 @@ func UnlockBlocksValid(inputs Outputs, transaction *Transaction) (valid bool) {
 			currentUnlockBlock = unlockBlocks[unlockBlocks[i].(*ReferenceUnlockBlock).ReferencedIndex()]
 		}
 
-		unlockValid, unlockErr := input.UnlockValid(transaction, currentUnlockBlock)
+		unlockValid, unlockErr := input.UnlockValid(transaction, currentUnlockBlock, inputs)
 		if !unlockValid || unlockErr != nil {
 			return false
 		}
