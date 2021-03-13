@@ -1616,24 +1616,10 @@ func (o *ExtendedLockedOutput) Balances() *ColoredBalances {
 
 // UnlockValid determines if the given Transaction and the corresponding UnlockBlock are allowed to spend the Output.
 func (o *ExtendedLockedOutput) UnlockValid(tx *Transaction, unlockBlock UnlockBlock, inputs []Output) (unlockValid bool, err error) {
-	if tx.Essence().Timestamp().Before(time.Unix(int64(o.timelock), 0)) {
-		// can't be unlocked yet
+	if o.TimeLockedNow(tx.Essence().Timestamp()) {
 		return false, nil
 	}
-	var addr Address
-	if o.fallbackAddress == nil {
-		// if fallback option is not set, the output can be unlocked by the main address
-		addr = o.address
-	} else {
-		// fallback option is set
-		// until fallback deadline the output can be unlocked by main address.
-		// after fallback deadline it can be unlocked by fallback address
-		if tx.Essence().Timestamp().Before(time.Unix(int64(o.fallbackDeadline), 0)) {
-			addr = o.address
-		} else {
-			addr = o.fallbackAddress
-		}
-	}
+	addr := o.UnlockAddressNow(tx.Essence().Timestamp())
 
 	switch blk := unlockBlock.(type) {
 	case *SignatureUnlockBlock:
@@ -1753,6 +1739,29 @@ func (o *ExtendedLockedOutput) String() string {
 
 func (o *ExtendedLockedOutput) GetPayload() []byte {
 	return o.payload
+}
+
+func (o *ExtendedLockedOutput) TimeLock() uint32 {
+	return o.timelock
+}
+
+func (o *ExtendedLockedOutput) TimeLockedNow(nowis time.Time) bool {
+	return time.Unix(int64(o.timelock), 0).After(nowis)
+
+}
+
+func (o *ExtendedLockedOutput) FallbackOptions() (Address, uint32) {
+	return o.fallbackAddress, o.fallbackDeadline
+}
+
+func (o *ExtendedLockedOutput) UnlockAddressNow(nowis time.Time) Address {
+	if o.fallbackAddress == nil {
+		return o.address
+	}
+	if nowis.After(time.Unix(int64(o.fallbackDeadline), 0)) {
+		return o.fallbackAddress
+	}
+	return o.address
 }
 
 // code contract (make sure the type implements all required methods)
