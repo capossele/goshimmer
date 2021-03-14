@@ -4,20 +4,17 @@ import (
 	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxodb"
 	"testing"
 
-	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxoutil"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSendIotas(t *testing.T) {
 	u := utxodb.New()
-	user1 := utxodb.NewKeyPairFromSeed(1)
-	addr1 := ledgerstate.NewED25519Address(user1.PublicKey)
+	user1, addr1 := utxodb.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2 := utxodb.NewKeyPairFromSeed(2)
-	addr2 := ledgerstate.NewED25519Address(user2.PublicKey)
+	_, addr2 := utxodb.NewKeyPairByIndex(2)
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
@@ -43,13 +40,11 @@ const howMany = uint64(42)
 
 func TestSendIotasMany(t *testing.T) {
 	u := utxodb.New()
-	user1 := utxodb.NewKeyPairFromSeed(1)
-	addr1 := ledgerstate.NewED25519Address(user1.PublicKey)
+	user1, addr1 := utxodb.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2 := utxodb.NewKeyPairFromSeed(2)
-	addr2 := ledgerstate.NewED25519Address(user2.PublicKey)
+	_, addr2 := utxodb.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
@@ -81,13 +76,11 @@ func TestSendIotasMany(t *testing.T) {
 
 func TestSendIotas1FromMany(t *testing.T) {
 	u := utxodb.New()
-	user1 := utxodb.NewKeyPairFromSeed(1)
-	addr1 := ledgerstate.NewED25519Address(user1.PublicKey)
+	user1, addr1 := utxodb.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2 := utxodb.NewKeyPairFromSeed(2)
-	addr2 := ledgerstate.NewED25519Address(user2.PublicKey)
+	user2, addr2 := utxodb.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
@@ -163,13 +156,11 @@ func TestSendIotas1FromMany(t *testing.T) {
 
 func TestSendIotasManyFromMany(t *testing.T) {
 	u := utxodb.New()
-	user1 := utxodb.NewKeyPairFromSeed(1)
-	addr1 := ledgerstate.NewED25519Address(user1.PublicKey)
+	user1, addr1 := utxodb.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2 := utxodb.NewKeyPairFromSeed(2)
-	addr2 := ledgerstate.NewED25519Address(user2.PublicKey)
+	user2, addr2 := utxodb.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))

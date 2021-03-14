@@ -17,9 +17,9 @@ const (
 )
 
 var (
-	seed           = ed25519.NewSeed([]byte("EFonzaUz5ngYeDxbRKu8qV5aoSogUQ5qVSTSjn7hJ8FQ"))
-	genesisKeyPair = NewKeyPairFromSeed(genesisIndex)
-	essenceVersion = ledgerstate.TransactionEssenceVersion(0)
+	seed                        = ed25519.NewSeed([]byte("EFonzaUz5ngYeDxbRKu8qV5aoSogUQ5qVSTSjn7hJ8FQ"))
+	genesisKeyPair, genesisAddr = NewKeyPairByIndex(genesisIndex)
+	essenceVersion              = ledgerstate.TransactionEssenceVersion(0)
 )
 
 // UtxoDB is the structure which contains all UTXODB transactions and ledger
@@ -43,8 +43,9 @@ func New() *UtxoDB {
 	return u
 }
 
-func NewKeyPairFromSeed(index int) *ed25519.KeyPair {
-	return seed.KeyPair(uint64(index))
+func NewKeyPairByIndex(index int) (*ed25519.KeyPair, *ledgerstate.ED25519Address) {
+	kp := seed.KeyPair(uint64(index))
+	return kp, ledgerstate.NewED25519Address(kp.PublicKey)
 }
 
 func (u *UtxoDB) genesisInit() {
@@ -69,7 +70,7 @@ func (u *UtxoDB) GetGenesisKeyPair() *ed25519.KeyPair {
 
 // GetGenesisAddress return address of genesis
 func (u *UtxoDB) GetGenesisAddress() ledgerstate.Address {
-	return ledgerstate.NewED25519Address(genesisKeyPair.PublicKey)
+	return genesisAddr
 }
 
 func (u *UtxoDB) mustRequestFundsTx(target ledgerstate.Address) *ledgerstate.Transaction {

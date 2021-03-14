@@ -11,15 +11,13 @@ import (
 
 func TestAliasMint(t *testing.T) {
 	u := utxodb.New()
-	user := utxodb.NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	user, addr := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	_, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -51,15 +49,13 @@ func TestAliasMint(t *testing.T) {
 
 func TestChainForkFail(t *testing.T) {
 	u := utxodb.New()
-	user := utxodb.NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	user, addr := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -145,15 +141,13 @@ const chainLength = 10
 
 func TestChain1(t *testing.T) {
 	u := utxodb.New()
-	user := utxodb.NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	user, addr := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -213,15 +207,13 @@ func TestChain1(t *testing.T) {
 
 func TestChain3(t *testing.T) {
 	u := utxodb.New()
-	user := utxodb.NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	user, addr := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -300,15 +292,13 @@ func TestChain3(t *testing.T) {
 
 func TestChainWithExtendedOutput(t *testing.T) {
 	u := utxodb.New()
-	user := utxodb.NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	user, addr := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -389,16 +379,14 @@ func TestChainWithExtendedOutput(t *testing.T) {
 
 func TestRequestSendingPattern(t *testing.T) {
 	u := utxodb.New()
-	userRequester := utxodb.NewKeyPairFromSeed(2)
-	addrRequester := ledgerstate.NewED25519Address(userRequester.PublicKey)
+	userRequester, addrRequester := utxodb.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addrRequester)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addrRequester))
 
 	// start chain with 100 iotas on it
-	userStateControl := utxodb.NewKeyPairFromSeed(3)
-	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
