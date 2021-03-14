@@ -110,20 +110,22 @@ func TestChainForkFail(t *testing.T) {
 
 	txb = utxoutil.NewBuilder(outputs...)
 	// create first alias output
-	chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+	err = txb.ConsumeChainInput(aliasAddress)
 	require.NoError(t, err)
-	err = txb.AddOutputAndSpend(chained)
+	err = txb.AddChainOutputAsReminder(aliasAddress, nil)
 	require.NoError(t, err)
 
 	// create another identical and modify slightly with adding dummy data
 	// This creates forked chain
+	chained, err = txb.ChainNextOutput(aliasAddress)
+	require.NoError(t, err)
 	chainedFork := chained.Clone()
 	err = chainedFork.(*ledgerstate.ChainOutput).SetStateData([]byte("qq"))
 	require.NoError(t, err)
 
 	succ := txb.ConsumeAmounts(chainedFork.Balances().Map())
 	require.True(t, succ)
-	err = txb.AddOutputAndSpend(chainedFork)
+	err = txb.AddOutputAndSpendUnspent(chainedFork)
 	require.NoError(t, err)
 
 	err = txb.AddReminderOutputIfNeeded(aliasAddress, nil)
@@ -186,9 +188,9 @@ func TestChain1(t *testing.T) {
 		require.EqualValues(t, 1, len(outputs))
 
 		txb = utxoutil.NewBuilder(outputs...)
-		chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+		err = txb.ConsumeChainInput(aliasAddress)
 		require.NoError(t, err)
-		err = txb.AddOutputAndSpend(chained)
+		err = txb.AddChainOutputAsReminder(aliasAddress, nil)
 		require.NoError(t, err)
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
@@ -271,9 +273,9 @@ func TestChain3(t *testing.T) {
 		require.EqualValues(t, 0, u.BalanceIOTA(addrStateControl))
 
 		txb = utxoutil.NewBuilder(outputs...)
-		chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+		err = txb.ConsumeChainInput(aliasAddress)
 		require.NoError(t, err)
-		err = txb.AddOutputAndSpend(chained)
+		err = txb.AddChainOutputAsReminder(aliasAddress, nil)
 		require.NoError(t, err)
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
@@ -355,12 +357,9 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		require.EqualValues(t, 0, u.BalanceIOTA(addrStateControl))
 
 		txb = utxoutil.NewBuilder(outputs...)
-		chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+		err = txb.ConsumeChainInput(aliasAddress)
 		require.NoError(t, err)
-		txb.ConsumeReminderBalances(true)
-		err = chained.SetBalances(txb.ConsumedUnspent())
-		require.NoError(t, err)
-		err = txb.AddOutputAndSpend(chained)
+		err = txb.AddChainOutputAsReminder(aliasAddress, nil, true)
 		require.NoError(t, err)
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
@@ -446,17 +445,11 @@ func TestRequestSendingPattern(t *testing.T) {
 	require.EqualValues(t, 100+numRequests, int(u.BalanceIOTA(aliasAddress)))
 
 	txb = utxoutil.NewBuilder(outputs...)
-	chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+	err = txb.ConsumeChainInput(aliasAddress)
 	require.NoError(t, err)
-	txb.ForEachUntouched(func(o ledgerstate.Output, idx int) bool {
-		_ = txb.ConsumeUntouchedByIndex(idx)
-		return true
-	})
-	txb.ConsumeReminderBalances(false)
-	err = chained.SetBalances(txb.ConsumedUnspent())
+	err = txb.AddChainOutputAsReminder(aliasAddress, nil, true)
 	require.NoError(t, err)
-	err = txb.AddOutputAndSpend(chained)
-	require.NoError(t, err)
+
 	tx, err = txb.BuildWithED25519(userStateControl)
 	require.NoError(t, err)
 	//

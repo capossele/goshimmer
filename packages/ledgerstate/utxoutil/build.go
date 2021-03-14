@@ -70,7 +70,7 @@ func (b *Builder) ConsumeUntouchedByIndex(idx int) error {
 	return nil
 }
 
-func (b *Builder) AddOutputAndSpend(out ledgerstate.Output) error {
+func (b *Builder) AddOutputAndSpendUnspent(out ledgerstate.Output) error {
 	b.SpendConsumedUnspent()
 	return b.addOutput(out)
 }
@@ -260,14 +260,60 @@ func (b *Builder) ConsumedUnspent() map[ledgerstate.Color]uint64 {
 	return ret
 }
 
-// ConsumeChainInputToOutput consumes and returns clone of the input
-func (b *Builder) ConsumeChainInputToOutput(addressAlias ledgerstate.Address) (*ledgerstate.ChainOutput, error) {
-	out, idx, ok := FindChainConsumableInput(addressAlias, b.consumables...)
+// ConsumeChainInput consumes and returns clone of the input
+func (b *Builder) ConsumeChainInput(addressAlias ledgerstate.Address) error {
+	_, idx, ok := FindChainConsumableInput(addressAlias, b.consumables...)
+	if !ok {
+		return xerrors.Errorf("can't find chain input for %s", addressAlias)
+	}
+	if err := b.ConsumeByIndex(idx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Builder) ChainNextOutput(addressAlias ledgerstate.Address) (*ledgerstate.ChainOutput, error) {
+	out, _, ok := FindChainConsumableInput(addressAlias, b.consumables...)
 	if !ok {
 		return nil, xerrors.Errorf("can't find chain input for %s", addressAlias)
 	}
-	b.MustConsumeUntouchedInputByIndex(idx)
-	return out.NewChainOutputNext(), nil
+	ret := out.Clone().(*ledgerstate.ChainOutput)
+	return ret.NewChainOutputNext(false), nil
+}
+
+// ConsumeChainInput consumes and returns clone of the input
+func (b *Builder) AddChainOutputAsReminder(addressAlias ledgerstate.Address, stateData []byte, compress ...bool) error {
+	out, idx, ok := FindChainConsumableInput(addressAlias, b.consumables...)
+	if !ok {
+		return xerrors.Errorf("can't find chain input for %s", addressAlias)
+	}
+	if err := b.ConsumeByIndex(idx); err != nil {
+		return err
+	}
+	compr := false
+	if len(compress) > 0 {
+		compr = compress[0]
+	}
+	b.ConsumeReminderBalances(compr)
+	chained := out.NewChainOutputNext()
+	if err := chained.SetBalances(b.ConsumedUnspent()); err != nil {
+		return err
+	}
+	if err := chained.SetStateData(stateData); err != nil {
+		return err
+	}
+	if err := b.AddOutputAndSpendUnspent(chained); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (b *Builder) ConsumeByIndex(index int) error {
+	if index >= len(b.consumables) {
+		return xerrors.New("MustConsumeUntouchedInputByIndex: invalid index")
+	}
+	b.addToConsumedUnspent(ConsumeRemaining(b.consumables[index]))
+	return nil
 }
 
 func (b *Builder) MustConsumeUntouchedInputByIndex(index int) {
