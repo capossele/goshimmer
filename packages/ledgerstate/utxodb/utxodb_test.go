@@ -1,7 +1,6 @@
 package utxodb
 
 import (
-	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -21,8 +20,7 @@ func TestGenesis(t *testing.T) {
 
 func TestRequestFunds(t *testing.T) {
 	u := New()
-	user := NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	_, addr := NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, Supply-RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
@@ -32,8 +30,7 @@ func TestRequestFunds(t *testing.T) {
 
 func TestAddTransactionFail(t *testing.T) {
 	u := New()
-	user := NewKeyPairFromSeed(2)
-	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	_, addr := NewKeyPairByIndex(2)
 	tx, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, Supply-RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
