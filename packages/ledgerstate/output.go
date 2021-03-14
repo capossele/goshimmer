@@ -916,7 +916,7 @@ type ChainOutput struct {
 // NewChainOutputMint creates new ChainOutput as minting output, i.e. the one which does not contain corresponding input.
 func NewChainOutputMint(balances map[Color]uint64, stateAddr Address) (*ChainOutput, error) {
 	if !IsAboveDustThreshold(balances) {
-		return nil, xerrors.New("ChainOutput: colored balances should not be empty")
+		return nil, xerrors.New("ChainOutput: colored balances are below dust threshold")
 	}
 	if stateAddr == nil || stateAddr.Type() == AliasAddressType {
 		return nil, xerrors.New("ChainOutput: enforcing mandatory state address must be backed by a private key, can't be an alias")
