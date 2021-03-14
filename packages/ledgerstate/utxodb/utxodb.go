@@ -169,8 +169,8 @@ func (u *UtxoDB) CheckTransaction(tx *ledgerstate.Transaction) error {
 	if !ledgerstate.TransactionBalancesValid(inputs, tx.Essence().Outputs()) {
 		return xerrors.Errorf("sum of consumed and spent balances is not 0")
 	}
-	if !ledgerstate.UnlockBlocksValid(inputs, tx) {
-		return xerrors.Errorf("spending of referenced consumedOutputs is not authorized")
+	if ok, err := ledgerstate.UnlockBlocksValidWithError(inputs, tx); !ok || err != nil {
+		return xerrors.Errorf("input unlocking failed. Error: %v", err)
 	}
 	return nil
 }
