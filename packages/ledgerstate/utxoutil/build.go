@@ -39,6 +39,23 @@ func NewBuilder(inputs ...ledgerstate.Output) *Builder {
 	return ret
 }
 
+func (b *Builder) Clone() *Builder {
+	ret := *b
+	ret.consumables = make([]*ConsumableOutput, len(b.consumables))
+	ret.outputs = make([]ledgerstate.Output, len(b.outputs))
+	ret.consumedUnspent = make(map[ledgerstate.Color]uint64)
+	for i := range ret.consumables {
+		ret.consumables[i] = b.consumables[i].Clone()
+	}
+	for i := range ret.outputs {
+		ret.outputs[i] = b.outputs[i].Clone()
+	}
+	for col, bal := range b.consumedUnspent {
+		ret.consumedUnspent[col] = bal
+	}
+	return &ret
+}
+
 func (b *Builder) WithVersion(v ledgerstate.TransactionEssenceVersion) *Builder {
 	b.version = v
 	return b
