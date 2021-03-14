@@ -1239,7 +1239,10 @@ func (c *ChainOutput) mustFlags() byte {
 	return ret
 }
 
-func (c *ChainOutput) findChainedOutput(tx *Transaction) (*ChainOutput, error) {
+// findChainedOutputAndCheckFork finds corresponding chained output.
+// If it is not unique, returns a error
+// If there's no such output, return nil and no error
+func (c *ChainOutput) findChainedOutputAndCheckFork(tx *Transaction) (*ChainOutput, error) {
 	var ret *ChainOutput
 	aliasAddress := c.GetAliasAddress()
 	for _, out := range tx.Essence().Outputs() {
@@ -1366,7 +1369,7 @@ func (c *ChainOutput) validateDestroyTransition(unlockedGovernance bool) error {
 }
 
 func (c *ChainOutput) validateTransition(tx *Transaction, unlockedState, unlockedGovernance bool) error {
-	chained, err := c.findChainedOutput(tx)
+	chained, err := c.findChainedOutputAndCheckFork(tx)
 	if err != nil {
 		return err
 	}
@@ -1396,7 +1399,7 @@ func (c *ChainOutput) unlockedBySignature(tx *Transaction, sigBlock *SignatureUn
 		return false, false, nil
 	}
 	if err := c.validateTransition(tx, unlockedState, unlockedGovernance); err != nil {
-		return false, false, nil
+		return false, false, err
 	}
 	return unlockedState, unlockedGovernance, nil
 }
@@ -1423,7 +1426,7 @@ func (c *ChainOutput) unlockedGovernanceByAliasIndex(tx *Transaction, refIndex u
 }
 
 func (c *ChainOutput) IsUnlockedForGovernanceUpdate(tx *Transaction) bool {
-	chained, err := c.findChainedOutput(tx)
+	chained, err := c.findChainedOutputAndCheckFork(tx)
 	if err != nil {
 		return false
 	}

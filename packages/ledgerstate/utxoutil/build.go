@@ -92,7 +92,7 @@ func (b *Builder) addToConsumedUnspent(bals map[ledgerstate.Color]uint64) {
 	}
 }
 
-func (b *Builder) consumeAmounts(amounts map[ledgerstate.Color]uint64) bool {
+func (b *Builder) ConsumeAmounts(amounts map[ledgerstate.Color]uint64) bool {
 	if !ConsumeMany(amounts, b.consumables...) {
 		return false
 	}
@@ -108,7 +108,7 @@ func (b *Builder) ensureEnoughUnspendAmounts(amounts map[ledgerstate.Color]uint6
 		}
 	}
 	if len(missing) > 0 {
-		if !b.consumeAmounts(missing) {
+		if !b.ConsumeAmounts(missing) {
 			return false
 		}
 	}

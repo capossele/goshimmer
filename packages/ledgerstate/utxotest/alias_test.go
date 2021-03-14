@@ -49,6 +49,98 @@ func TestAliasMint(t *testing.T) {
 	require.True(t, sender.Equals(addr))
 }
 
+func TestChainForkFail(t *testing.T) {
+	u := utxodb.New()
+	user := utxodb.NewKeyPairFromSeed(2)
+	addr := ledgerstate.NewED25519Address(user.PublicKey)
+	_, err := u.RequestFunds(addr)
+	require.NoError(t, err)
+	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
+
+	userStateControl := utxodb.NewKeyPairFromSeed(3)
+	addrStateControl := ledgerstate.NewED25519Address(userStateControl.PublicKey)
+	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
+	require.NoError(t, err)
+
+	// mint chain output
+	outputs := u.GetAddressOutputs(addr)
+	require.EqualValues(t, 1, len(outputs))
+
+	txb := utxoutil.NewBuilder(outputs...)
+	err = txb.AddNewChainMint(bals1, addrStateControl, nil)
+	require.NoError(t, err)
+	err = txb.AddReminderOutputIfNeeded(addr, nil)
+	require.NoError(t, err)
+	tx, err := txb.BuildWithED25519(user)
+	require.NoError(t, err)
+
+	err = u.AddTransaction(tx)
+	require.NoError(t, err)
+
+	sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
+	require.NoError(t, err)
+	require.True(t, sender.Equals(addr))
+
+	// determine newly created alias address
+	chained, err := utxoutil.GetSingleChainedOutput(tx.Essence())
+	require.NoError(t, err)
+	require.NotNil(t, chained)
+
+	aliasAddress := chained.GetAliasAddress()
+	t.Logf("newly created alias address: %s", aliasAddress.Base58())
+
+	// add some 200 iotas to newly minted alias
+	outputs = u.GetAddressOutputs(addr)
+	require.EqualValues(t, 1, len(outputs))
+
+	txb = utxoutil.NewBuilder(outputs...)
+	err = txb.AddExtendedOutputSimple(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 200})
+	require.NoError(t, err)
+	err = txb.AddReminderOutputIfNeeded(addr, nil)
+	require.NoError(t, err)
+	tx, err = txb.BuildWithED25519(user)
+	require.NoError(t, err)
+	err = u.AddTransaction(tx)
+	require.NoError(t, err)
+
+	require.EqualValues(t, utxodb.RequestFundsAmount-300, int(u.BalanceIOTA(addr)))
+	require.EqualValues(t, 300, u.BalanceIOTA(aliasAddress))
+	require.EqualValues(t, 0, u.BalanceIOTA(addrStateControl))
+
+	// create transaction with forked alias output
+	outputs = u.GetAddressOutputs(aliasAddress)
+	require.EqualValues(t, 2, len(outputs))
+
+	txb = utxoutil.NewBuilder(outputs...)
+	// create first alias output
+	chained, err = txb.ConsumeChainInputToOutput(aliasAddress)
+	require.NoError(t, err)
+	err = txb.AddOutputAndSpend(chained)
+	require.NoError(t, err)
+
+	// create another identical and modify slightly with adding dummy data
+	// This creates forked chain
+	chainedFork := chained.Clone()
+	err = chainedFork.(*ledgerstate.ChainOutput).SetStateData([]byte("qq"))
+	require.NoError(t, err)
+
+	succ := txb.ConsumeAmounts(chainedFork.Balances().Map())
+	require.True(t, succ)
+	err = txb.AddOutputAndSpend(chainedFork)
+	require.NoError(t, err)
+
+	err = txb.AddReminderOutputIfNeeded(aliasAddress, nil)
+	require.NoError(t, err)
+
+	tx, err = txb.BuildWithED25519(userStateControl)
+	require.NoError(t, err)
+
+	// adding forked chain must fail
+	err = u.AddTransaction(tx)
+	require.Error(t, err)
+}
+
 const chainLength = 10
 
 func TestChain1(t *testing.T) {
