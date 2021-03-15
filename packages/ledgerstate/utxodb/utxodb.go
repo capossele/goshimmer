@@ -247,3 +247,14 @@ func (u *UtxoDB) GetSingleSender(tx *ledgerstate.Transaction) (ledgerstate.Addre
 	}
 	return utxoutil.GetSingleSender(tx, inputs)
 }
+
+func (u *UtxoDB) GetChainOutputs(addr ledgerstate.Address) []*ledgerstate.ChainOutput {
+	outs := u.GetAddressOutputs(addr)
+	ret := make([]*ledgerstate.ChainOutput, 0)
+	for _, out := range outs {
+		if o, ok := out.(*ledgerstate.ChainOutput); ok {
+			ret = append(ret, o)
+		}
+	}
+	return ret
+}
