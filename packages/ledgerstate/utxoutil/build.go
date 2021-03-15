@@ -385,7 +385,7 @@ func (b *Builder) BuildWithED25519(keyPairs ...*ed25519.KeyPair) (*ledgerstate.T
 	if err != nil {
 		return nil, err
 	}
-	unlockBlocks, err := UnlockInputsWithED25519KeyPairs(consumedOutputs, essence, keyPairs)
+	unlockBlocks, err := UnlockInputsWithED25519KeyPairs(consumedOutputs, essence, keyPairs...)
 
 	return ledgerstate.NewTransaction(essence, unlockBlocks), nil
 }

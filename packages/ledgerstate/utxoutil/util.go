@@ -28,7 +28,7 @@ type signatureUnlockBlockWithIndex struct {
 	indexUnlocked int
 }
 
-func UnlockInputsWithED25519KeyPairs(inputs []ledgerstate.Output, essence *ledgerstate.TransactionEssence, keyPairs []*ed25519.KeyPair) ([]ledgerstate.UnlockBlock, error) {
+func UnlockInputsWithED25519KeyPairs(inputs []ledgerstate.Output, essence *ledgerstate.TransactionEssence, keyPairs ...*ed25519.KeyPair) ([]ledgerstate.UnlockBlock, error) {
 	sigs := make(map[[33]byte]*signatureUnlockBlockWithIndex)
 	for _, keyPair := range keyPairs {
 		addr := ledgerstate.NewED25519Address(keyPair.PublicKey)
