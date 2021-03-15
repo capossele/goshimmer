@@ -76,17 +76,6 @@ func (b *Builder) WithConsensusPledge(id identity.ID) *Builder {
 	return b
 }
 
-func (b *Builder) ConsumeUntouchedByIndex(idx int) error {
-	if idx >= len(b.consumables) {
-		return xerrors.New("wrong index")
-	}
-	if b.consumables[idx].WasConsumed() {
-		return xerrors.New("input already consumed")
-	}
-	b.addToConsumedUnspent(ConsumeRemaining(b.consumables[idx]))
-	return nil
-}
-
 func (b *Builder) AddOutputAndSpendUnspent(out ledgerstate.Output) error {
 	b.SpendConsumedUnspent()
 	return b.addOutput(out)
@@ -283,7 +272,7 @@ func (b *Builder) ConsumeChainInput(addressAlias ledgerstate.Address) error {
 	if !ok {
 		return xerrors.Errorf("can't find chain input for %s", addressAlias)
 	}
-	if err := b.ConsumeByIndex(idx); err != nil {
+	if err := b.ConsumeInputByIndex(idx); err != nil {
 		return err
 	}
 	return nil
@@ -304,7 +293,7 @@ func (b *Builder) AddChainOutputAsReminder(addressAlias ledgerstate.Address, sta
 	if !ok {
 		return xerrors.Errorf("can't find chain input for %s", addressAlias)
 	}
-	if err := b.ConsumeByIndex(idx); err != nil {
+	if err := b.ConsumeInputByIndex(idx); err != nil {
 		return err
 	}
 	compr := false
@@ -325,7 +314,14 @@ func (b *Builder) AddChainOutputAsReminder(addressAlias ledgerstate.Address, sta
 	return nil
 }
 
-func (b *Builder) ConsumeByIndex(index int) error {
+func (b *Builder) InputByIndex(index int) (ledgerstate.Output, error) {
+	if index >= len(b.consumables) {
+		return nil, xerrors.New("MustConsumeUntouchedInputByIndex: invalid index")
+	}
+	return b.consumables[index].output, nil
+}
+
+func (b *Builder) ConsumeInputByIndex(index int) error {
 	if index >= len(b.consumables) {
 		return xerrors.New("MustConsumeUntouchedInputByIndex: invalid index")
 	}
