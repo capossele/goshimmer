@@ -22,6 +22,7 @@ require (
 	github.com/labstack/gommon v0.3.0
 	github.com/magiconair/properties v1.8.1
 	github.com/markbates/pkger v0.17.1
+	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/panjf2000/ants/v2 v2.4.3
 	github.com/pkg/errors v0.9.1

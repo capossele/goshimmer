@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/iotaledger/hive.go/crypto/ed25519"
+	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
 )
 
@@ -220,4 +221,18 @@ func GetSingleSender(tx *ledgerstate.Transaction, inputs []ledgerstate.Output) (
 		return nil, xerrors.New("GetSingleSender: inconsistent sender information 2")
 	}
 	return ret, nil
+}
+
+func GetMintedAmounts(tx *ledgerstate.Transaction) map[ledgerstate.Color]uint64 {
+	ret := make(map[ledgerstate.Color]uint64)
+	for _, out := range tx.Essence().Outputs() {
+		out.Balances().ForEach(func(col ledgerstate.Color, bal uint64) bool {
+			if col == ledgerstate.ColorMint {
+				ret[ledgerstate.Color(blake2b.Sum256(out.ID().Bytes()))] = bal
+				return false
+			}
+			return true
+		})
+	}
+	return ret
 }
