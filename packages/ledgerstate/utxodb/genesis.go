@@ -24,20 +24,22 @@ var (
 
 // UtxoDB is the structure which contains all UTXODB transactions and ledger
 type UtxoDB struct {
-	genesisKeyPair *ed25519.KeyPair
-	transactions   map[ledgerstate.TransactionID]*ledgerstate.Transaction
-	utxo           map[ledgerstate.OutputID]ledgerstate.Output
-	mutex          *sync.RWMutex
-	genesisTxId    ledgerstate.TransactionID
+	genesisKeyPair  *ed25519.KeyPair
+	transactions    map[ledgerstate.TransactionID]*ledgerstate.Transaction
+	utxo            map[ledgerstate.OutputID]ledgerstate.Output
+	consumedOutputs map[ledgerstate.OutputID]ledgerstate.Output
+	mutex           *sync.RWMutex
+	genesisTxId     ledgerstate.TransactionID
 }
 
 // New creates new UTXODB instance
 func New() *UtxoDB {
 	u := &UtxoDB{
-		genesisKeyPair: genesisKeyPair,
-		transactions:   make(map[ledgerstate.TransactionID]*ledgerstate.Transaction),
-		utxo:           make(map[ledgerstate.OutputID]ledgerstate.Output),
-		mutex:          &sync.RWMutex{},
+		genesisKeyPair:  genesisKeyPair,
+		transactions:    make(map[ledgerstate.TransactionID]*ledgerstate.Transaction),
+		utxo:            make(map[ledgerstate.OutputID]ledgerstate.Output),
+		consumedOutputs: make(map[ledgerstate.OutputID]ledgerstate.Output),
+		mutex:           &sync.RWMutex{},
 	}
 	u.genesisInit()
 	return u
