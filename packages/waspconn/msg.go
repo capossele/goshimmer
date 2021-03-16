@@ -42,61 +42,64 @@ type WaspMsgChunk struct {
 	Data []byte
 }
 
-type WaspPingMsg struct {
-	Id        uint32
-	Timestamp time.Time
-}
+// Wasp --> Goshimmer
 
+// WaspToNodeTransactionMsg Wasp nodes publishes state update transaction
 type WaspToNodeTransactionMsg struct {
-	Tx        *ledgerstate.Transaction // transaction posted
-	SCAddress ledgerstate.Address      // smart contract which posted
-	Leader    uint16                   // leader index
+	Tx           *ledgerstate.Transaction  // transaction posted
+	ChainAddress *ledgerstate.AliasAddress // mostly for logging/testing
+	Leader       uint16                    // mostly for logging/testing
 }
 
-type AddressColor struct {
-	Address ledgerstate.Address
-	Color   ledgerstate.Color
-}
+// WaspToNodeSubscribeMsg wasp node subscribes to requests/transactions for the chain(s)
 type WaspToNodeSubscribeMsg struct {
-	AddressesWithColors []AddressColor
+	ChainAddress []*ledgerstate.AliasAddress
 }
 
+// WaspToNodeGetConfirmedTransactionMsg wasp asks (pulls) specific transaction from goshimmer
+// Only asks for confirmed tx
 type WaspToNodeGetConfirmedTransactionMsg struct {
 	TxId ledgerstate.TransactionID
 }
 
+// WaspToNodeGetBranchInclusionStateMsg wasp node asks (pulls) inclusion state for specific transaction
+// in the chain. Normally wasp is waiting for the confirmation of transaction, so after some timeout
+// it asks (puls) its state. The chain address is a return address for dispatcher
 type WaspToNodeGetBranchInclusionStateMsg struct {
-	TxId      ledgerstate.TransactionID
-	SCAddress ledgerstate.Address
+	TxId         ledgerstate.TransactionID
+	ChainAddress *ledgerstate.AliasAddress
 }
 
+// WaspToNodeGetOutputsMsg wasp asks (pulls) the backlog for the chain
 type WaspToNodeGetOutputsMsg struct {
-	Address ledgerstate.Address
+	ChainAddress *ledgerstate.AliasAddress
 }
 
+// WaspToNodeSetIdMsg wasp informs the node about its ID (mostly for tracing/loging)
 type WaspToNodeSetIdMsg struct {
 	Waspid string
 }
 
+// Goshimmer --> Wasp
+
+// WaspFromNodeConfirmedTransactionMsg node sends (push) to wasp a confirmed transaction of interest
+// (with subscribed outputs).
 type WaspFromNodeConfirmedTransactionMsg struct {
-	Tx *ledgerstate.Transaction
+	Sender ledgerstate.Address
+	Tx     *ledgerstate.Transaction
 }
 
-type WaspFromNodeAddressUpdateMsg struct {
-	Address  ledgerstate.Address
-	Balances map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances
-	Tx       *ledgerstate.Transaction
+// WaspFromNodeBacklogUpdateMsg update of the backlog
+type WaspFromNodeBacklogUpdateMsg struct {
+	ChainOutput *ledgerstate.ChainOutput // must exists always. chain address is known from this one
+	Outputs     []*ledgerstate.ExtendedLockedOutput
+	Senders     map[ledgerstate.TransactionID]ledgerstate.Address
 }
 
-type WaspFromNodeAddressOutputsMsg struct {
-	Address  ledgerstate.Address
-	Balances map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances
-}
-
+// WaspFromNodeBranchInclusionStateMsg update to the transaction status
 type WaspFromNodeBranchInclusionStateMsg struct {
-	State               ledgerstate.InclusionState
-	TxId                ledgerstate.TransactionID
-	SubscribedAddresses []ledgerstate.Address // addresses which transaction might be interesting to
+	State ledgerstate.InclusionState
+	TxId  ledgerstate.TransactionID
 }
 
 func typeToCode(msg Message) byte {
