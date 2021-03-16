@@ -1,19 +1,16 @@
 package waspconn
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"sort"
-	"time"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/iotaledger/hive.go/marshalutil"
 )
 
+type MessageType byte
+
 const (
-	waspPing = iota
-	waspMsgChunk
+	waspMsgChunk = MessageType(iota)
 
 	// wasp -> node
 	waspToNodeTransaction
@@ -25,8 +22,7 @@ const (
 
 	// node -> wasp
 	waspFromNodeConfirmedTransaction
-	waspFromNodeAddressUpdate
-	waspFromNodeAddressOutputs
+	waspFromNodeBacklogUpdate
 	waspFromNodeBranchInclusionState
 )
 
@@ -35,6 +31,7 @@ const ChunkMessageHeaderSize = 3
 type Message interface {
 	Write(w *marshalutil.MarshalUtil)
 	Read(r *marshalutil.MarshalUtil) error
+	Type() MessageType
 }
 
 // special messages for big Data packets chopped into pieces
@@ -53,7 +50,7 @@ type WaspToNodeTransactionMsg struct {
 
 // WaspToNodeSubscribeMsg wasp node subscribes to requests/transactions for the chain(s)
 type WaspToNodeSubscribeMsg struct {
-	ChainAddress []*ledgerstate.AliasAddress
+	ChainAddresses []*ledgerstate.AliasAddress
 }
 
 // WaspToNodeGetConfirmedTransactionMsg wasp asks (pulls) specific transaction from goshimmer
@@ -123,51 +120,9 @@ type WaspFromNodeBranchInclusionStateMsg struct {
 	TxId  ledgerstate.TransactionID
 }
 
-func typeToCode(msg Message) byte {
-	switch msg.(type) {
-	case *WaspPingMsg:
-		return waspPing
-
-	case *WaspMsgChunk:
-		return waspMsgChunk
-
-	case *WaspToNodeTransactionMsg:
-		return waspToNodeTransaction
-
-	case *WaspToNodeSubscribeMsg:
-		return waspToNodeSubscribe
-
-	case *WaspToNodeGetConfirmedTransactionMsg:
-		return waspToNodeGetConfirmedTransaction
-
-	case *WaspToNodeGetBranchInclusionStateMsg:
-		return waspToNodeGetBranchInclusionState
-
-	case *WaspToNodeGetOutputsMsg:
-		return waspToNodeGetOutputs
-
-	case *WaspToNodeSetIdMsg:
-		return waspToNodeSetId
-
-	case *WaspFromNodeConfirmedTransactionMsg:
-		return waspFromNodeConfirmedTransaction
-
-	case *WaspFromNodeAddressUpdateMsg:
-		return waspFromNodeAddressUpdate
-
-	case *WaspFromNodeAddressOutputsMsg:
-		return waspFromNodeAddressOutputs
-
-	case *WaspFromNodeBranchInclusionStateMsg:
-		return waspFromNodeBranchInclusionState
-	}
-
-	panic("wrong type")
-}
-
 func EncodeMsg(msg Message) []byte {
 	m := marshalutil.New()
-	m.WriteByte(typeToCode(msg))
+	m.WriteByte(byte(msg.Type()))
 	msg.Write(m)
 	return m.Bytes()
 }
@@ -178,10 +133,7 @@ func DecodeMsg(data []byte, waspSide bool) (interface{}, error) {
 	}
 	var ret Message
 
-	switch data[0] {
-	case waspPing:
-		ret = &WaspPingMsg{}
-
+	switch MessageType(data[0]) {
 	case waspMsgChunk:
 		ret = &WaspMsgChunk{}
 
@@ -227,17 +179,11 @@ func DecodeMsg(data []byte, waspSide bool) (interface{}, error) {
 		}
 		ret = &WaspFromNodeConfirmedTransactionMsg{}
 
-	case waspFromNodeAddressUpdate:
+	case waspFromNodeBacklogUpdate:
 		if !waspSide {
 			return nil, fmt.Errorf("wrong message")
 		}
-		ret = &WaspFromNodeAddressUpdateMsg{}
-
-	case waspFromNodeAddressOutputs:
-		if !waspSide {
-			return nil, fmt.Errorf("wrong message")
-		}
-		ret = &WaspFromNodeAddressOutputsMsg{}
+		ret = &WaspFromNodeBacklogUpdateMsg{}
 
 	case waspFromNodeBranchInclusionState:
 		if !waspSide {
@@ -254,25 +200,9 @@ func DecodeMsg(data []byte, waspSide bool) (interface{}, error) {
 	return ret, nil
 }
 
-func (msg *WaspPingMsg) Write(m *marshalutil.MarshalUtil) {
-	m.WriteUint32(msg.Id)
-	m.WriteTime(msg.Timestamp)
-}
-
-func (msg *WaspPingMsg) Read(m *marshalutil.MarshalUtil) error {
-	var err error
-	if msg.Id, err = m.ReadUint32(); err != nil {
-		return err
-	}
-	if msg.Timestamp, err = m.ReadTime(); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (msg *WaspToNodeTransactionMsg) Write(w *marshalutil.MarshalUtil) {
 	w.Write(msg.Tx)
-	w.Write(msg.SCAddress)
+	w.Write(msg.ChainAddress)
 	w.WriteUint16(msg.Leader)
 }
 
@@ -281,7 +211,7 @@ func (msg *WaspToNodeTransactionMsg) Read(m *marshalutil.MarshalUtil) error {
 	if msg.Tx, err = ledgerstate.TransactionFromMarshalUtil(m); err != nil {
 		return err
 	}
-	if msg.SCAddress, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
+	if msg.ChainAddress, err = ledgerstate.AliasAddressFromMarshalUtil(m); err != nil {
 		return err
 	}
 	if msg.Leader, err = m.ReadUint16(); err != nil {
@@ -290,11 +220,14 @@ func (msg *WaspToNodeTransactionMsg) Read(m *marshalutil.MarshalUtil) error {
 	return nil
 }
 
+func (msg *WaspToNodeTransactionMsg) Type() MessageType {
+	return waspToNodeTransaction
+}
+
 func (msg *WaspToNodeSubscribeMsg) Write(w *marshalutil.MarshalUtil) {
-	w.WriteUint16(uint16(len(msg.AddressesWithColors)))
-	for _, addrCol := range msg.AddressesWithColors {
-		w.Write(addrCol.Address)
-		w.Write(addrCol.Color)
+	w.WriteUint16(uint16(len(msg.ChainAddresses)))
+	for _, addr := range msg.ChainAddresses {
+		w.Write(addr)
 	}
 }
 
@@ -304,16 +237,17 @@ func (msg *WaspToNodeSubscribeMsg) Read(m *marshalutil.MarshalUtil) error {
 	if size, err = m.ReadUint16(); err != nil {
 		return err
 	}
-	msg.AddressesWithColors = make([]AddressColor, size)
-	for i := range msg.AddressesWithColors {
-		if msg.AddressesWithColors[i].Address, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
-			return err
-		}
-		if msg.AddressesWithColors[i].Color, err = ledgerstate.ColorFromMarshalUtil(m); err != nil {
+	msg.ChainAddresses = make([]*ledgerstate.AliasAddress, size)
+	for i := uint16(0); i < size; i++ {
+		if msg.ChainAddresses[i], err = ledgerstate.AliasAddressFromMarshalUtil(m); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (msg *WaspToNodeSubscribeMsg) Type() MessageType {
+	return waspToNodeSubscribe
 }
 
 func (msg *WaspToNodeGetConfirmedTransactionMsg) Write(w *marshalutil.MarshalUtil) {
@@ -326,9 +260,13 @@ func (msg *WaspToNodeGetConfirmedTransactionMsg) Read(m *marshalutil.MarshalUtil
 	return err
 }
 
+func (msg *WaspToNodeGetConfirmedTransactionMsg) Type() MessageType {
+	return waspToNodeGetConfirmedTransaction
+}
+
 func (msg *WaspToNodeGetBranchInclusionStateMsg) Write(w *marshalutil.MarshalUtil) {
 	w.Write(msg.TxId)
-	w.Write(msg.SCAddress)
+	w.Write(msg.ChainAddress)
 }
 
 func (msg *WaspToNodeGetBranchInclusionStateMsg) Read(m *marshalutil.MarshalUtil) error {
@@ -336,20 +274,28 @@ func (msg *WaspToNodeGetBranchInclusionStateMsg) Read(m *marshalutil.MarshalUtil
 	if msg.TxId, err = ledgerstate.TransactionIDFromMarshalUtil(m); err != nil {
 		return err
 	}
-	if msg.SCAddress, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
+	if msg.ChainAddress, err = ledgerstate.AliasAddressFromMarshalUtil(m); err != nil {
 		return err
 	}
 	return nil
 }
 
+func (msg *WaspToNodeGetBranchInclusionStateMsg) Type() MessageType {
+	return waspToNodeGetBranchInclusionState
+}
+
 func (msg *WaspToNodeGetOutputsMsg) Write(w *marshalutil.MarshalUtil) {
-	w.Write(msg.Address)
+	w.Write(msg.ChainAddress)
 }
 
 func (msg *WaspToNodeGetOutputsMsg) Read(m *marshalutil.MarshalUtil) error {
 	var err error
-	msg.Address, err = ledgerstate.AddressFromMarshalUtil(m)
+	msg.ChainAddress, err = ledgerstate.AliasAddressFromMarshalUtil(m)
 	return err
+}
+
+func (msg *WaspToNodeGetOutputsMsg) Type() MessageType {
+	return waspToNodeGetOutputs
 }
 
 func (msg *WaspToNodeSetIdMsg) Write(w *marshalutil.MarshalUtil) {
@@ -371,6 +317,10 @@ func (msg *WaspToNodeSetIdMsg) Read(m *marshalutil.MarshalUtil) error {
 	return nil
 }
 
+func (msg *WaspToNodeSetIdMsg) Type() MessageType {
+	return waspToNodeSetId
+}
+
 func (msg *WaspFromNodeConfirmedTransactionMsg) Write(w *marshalutil.MarshalUtil) {
 	w.Write(msg.Tx)
 }
@@ -383,38 +333,56 @@ func (msg *WaspFromNodeConfirmedTransactionMsg) Read(m *marshalutil.MarshalUtil)
 	return nil
 }
 
-func (msg *WaspFromNodeAddressUpdateMsg) Write(w *marshalutil.MarshalUtil) {
-	w.Write(msg.Address)
-	WriteBalances(w, msg.Balances)
-	w.Write(msg.Tx)
+func (msg *WaspFromNodeConfirmedTransactionMsg) Type() MessageType {
+	return waspFromNodeConfirmedTransaction
 }
 
-func (msg *WaspFromNodeAddressUpdateMsg) Read(m *marshalutil.MarshalUtil) error {
+func (msg *WaspFromNodeBacklogUpdateMsg) Write(w *marshalutil.MarshalUtil) {
+	w.Write(msg.ChainOutput)
+	w.WriteUint16(uint16(len(msg.Outputs)))
+	for _, out := range msg.Outputs {
+		w.Write(out)
+	}
+	w.WriteUint16(uint16(len(msg.Senders)))
+	for txid, addr := range msg.Senders {
+		w.Write(txid)
+		w.Write(addr)
+	}
+}
+
+func (msg *WaspFromNodeBacklogUpdateMsg) Read(m *marshalutil.MarshalUtil) error {
 	var err error
-	if msg.Address, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
+	if msg.ChainOutput, err = ledgerstate.ChainOutputFromMarshalUtil(m); err != nil {
 		return err
 	}
-	if msg.Balances, err = ReadBalances(m); err != nil {
+	var size uint16
+	if size, err = m.ReadUint16(); err != nil {
 		return err
 	}
-	if msg.Tx, err = ledgerstate.TransactionFromMarshalUtil(m); err != nil {
+	msg.Outputs = make([]*ledgerstate.ExtendedLockedOutput, size)
+	for i := uint16(0); i < size; i++ {
+		if msg.Outputs[i], err = ledgerstate.ExtendedOutputFromMarshalUtil(m); err != nil {
+			return err
+		}
+	}
+	if size, err = m.ReadUint16(); err != nil {
 		return err
+	}
+	msg.Senders = make(map[ledgerstate.TransactionID]ledgerstate.Address, size)
+	for i := uint16(0); i < size; i++ {
+		var txid ledgerstate.TransactionID
+		if txid, err = ledgerstate.TransactionIDFromMarshalUtil(m); err != nil {
+			return err
+		}
+		if msg.Senders[txid], err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (msg *WaspFromNodeAddressOutputsMsg) Write(w *marshalutil.MarshalUtil) {
-	w.Write(msg.Address)
-	WriteBalances(w, msg.Balances)
-}
-
-func (msg *WaspFromNodeAddressOutputsMsg) Read(m *marshalutil.MarshalUtil) error {
-	var err error
-	if msg.Address, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
-		return err
-	}
-	msg.Balances, err = ReadBalances(m)
-	return err
+func (msg *WaspFromNodeBacklogUpdateMsg) Type() MessageType {
+	return waspFromNodeBacklogUpdate
 }
 
 func (msg *WaspMsgChunk) Write(w *marshalutil.MarshalUtil) {
@@ -432,13 +400,13 @@ func (msg *WaspMsgChunk) Read(m *marshalutil.MarshalUtil) error {
 	return err
 }
 
+func (msg *WaspMsgChunk) Type() MessageType {
+	return waspMsgChunk
+}
+
 func (msg *WaspFromNodeBranchInclusionStateMsg) Write(w *marshalutil.MarshalUtil) {
 	w.Write(msg.State)
 	w.Write(msg.TxId)
-	w.WriteUint16(uint16(len(msg.SubscribedAddresses)))
-	for i := range msg.SubscribedAddresses {
-		w.Write(msg.SubscribedAddresses[i])
-	}
 }
 
 func (msg *WaspFromNodeBranchInclusionStateMsg) Read(m *marshalutil.MarshalUtil) error {
@@ -449,159 +417,9 @@ func (msg *WaspFromNodeBranchInclusionStateMsg) Read(m *marshalutil.MarshalUtil)
 	if msg.TxId, err = ledgerstate.TransactionIDFromMarshalUtil(m); err != nil {
 		return err
 	}
-	var numAddrs uint16
-	if numAddrs, err = m.ReadUint16(); err != nil {
-		return err
-	}
-	msg.SubscribedAddresses = make([]ledgerstate.Address, numAddrs)
-	for i := range msg.SubscribedAddresses {
-		if msg.SubscribedAddresses[i], err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func WriteBalances(w *marshalutil.MarshalUtil, balances map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances) {
-	if err := ValidateBalances(balances); err != nil {
-		panic(err)
-	}
-	w.WriteUint16(uint16(len(balances)))
-	for txid, bals := range balances {
-		w.Write(txid)
-		w.Write(bals)
-	}
-}
-
-func ReadBalances(m *marshalutil.MarshalUtil) (map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances, error) {
-	var err error
-	var size uint16
-	if size, err = m.ReadUint16(); err != nil {
-		return nil, err
-	}
-	ret := make(map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances, size)
-	for i := uint16(0); i < size; i++ {
-		var txid ledgerstate.TransactionID
-		if txid, err = ledgerstate.TransactionIDFromMarshalUtil(m); err != nil {
-			return nil, err
-		}
-		var bals *ledgerstate.ColoredBalances
-		if bals, err = ledgerstate.ColoredBalancesFromMarshalUtil(m); err != nil {
-			return nil, err
-		}
-		ret[txid] = bals
-	}
-	if err := ValidateBalances(ret); err != nil {
-		return nil, err
-	}
-	return ret, nil
-}
-
-func OutputsToBalances(outs map[ledgerstate.OutputID]*ledgerstate.ColoredBalances) map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances {
-	ret := make(map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances)
-	var niltxid ledgerstate.TransactionID
-
-	for outp, bals := range outs {
-		if outp.TransactionID() == niltxid {
-			panic("outp.TransactionID() == niltxid")
-		}
-		ret[outp.TransactionID()] = bals
-	}
-	return ret
-}
-
-func OutputBalancesByColor(outs map[ledgerstate.OutputID]*ledgerstate.ColoredBalances) (map[ledgerstate.Color]uint64, uint64) {
-	ret := make(map[ledgerstate.Color]uint64)
-	var total uint64
-	for _, bals := range outs {
-		bals.ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			if s, ok := ret[color]; !ok {
-				ret[color] = balance
-			} else {
-				ret[color] = s + balance
-			}
-			total += balance
-			return true
-		})
-	}
-	return ret, total
-}
-
-func OutputsByTransactionToString(outs map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances) string {
-	ret := ""
-	for txid, bals := range outs {
-		ret += fmt.Sprintf("     %s:\n", txid.String())
-		bals.ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			ret += fmt.Sprintf("            %s: %d\n", color.String(), balance)
-			return true
-		})
-	}
-	return ret
-}
-
-func BalancesByColorToString(bals map[ledgerstate.Color]uint64) string {
-	ret := ""
-	for col, b := range bals {
-		ret += fmt.Sprintf("      %s: %d\n", col.String(), b)
-	}
-	return ret
-}
-
-// InclusionStateText return text representation of the code
-func InclusionStateText(state ledgerstate.InclusionState) string {
-	switch state {
-	case ledgerstate.Pending:
-		return "pending"
-	case ledgerstate.Confirmed:
-		return "confirmed"
-	case ledgerstate.Rejected:
-		return "rejected"
-	}
-	return "wrong code"
-}
-
-func BalancesToString(outs map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances) string {
-	if outs == nil {
-		return "empty balances"
-	}
-
-	txids := make([]ledgerstate.TransactionID, 0, len(outs))
-	for txid := range outs {
-		txids = append(txids, txid)
-	}
-	sort.Slice(txids, func(i, j int) bool {
-		return bytes.Compare(txids[i][:], txids[j][:]) < 0
-	})
-
-	ret := ""
-	for _, txid := range txids {
-		bals := outs[txid]
-		ret += txid.String() + ":\n"
-		bals.ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			ret += fmt.Sprintf("         %s: %d\n", color.String(), balance)
-			return true
-		})
-	}
-	return ret
-}
-
-var niltxid ledgerstate.TransactionID
-
-func ValidateBalances(outs map[ledgerstate.TransactionID]*ledgerstate.ColoredBalances) error {
-	for txid, bals := range outs {
-		if txid == (ledgerstate.TransactionID)(ledgerstate.ColorMint) || txid == niltxid {
-			return errors.New("ValidateBalances: wrong txid")
-		}
-		var err error
-		bals.ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			if color == ledgerstate.ColorMint {
-				err = errors.New("ValidateBalances: can't be ColorMint")
-			}
-			return err == nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (msg *WaspFromNodeBranchInclusionStateMsg) Type() MessageType {
+	return waspFromNodeBranchInclusionState
 }
