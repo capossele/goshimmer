@@ -82,6 +82,27 @@ type WaspToNodeSetIdMsg struct {
 
 // Goshimmer --> Wasp
 
+// NEW TEMPORARY
+
+// May be enough to have this one structure to update the information about backlog
+
+type WaspFromNodeAccountUpdate struct {
+	// TxId is mandatory id of transaction where information has been collected from
+	TxId ledgerstate.TransactionID
+	// ChainAddress is mandatory chain address of interest (subscribed), the filter for the info
+	ChainAddress *ledgerstate.AliasAddress
+	// Sender is a unique sender of the transaction of TxId
+	Sender *ledgerstate.Address
+	// MintProofs mint proofs present in the transaction TxId
+	MintProofs map[ledgerstate.Color]uint64
+	// optional. Only if chain output is present in the tx. Must have address == ChainAddress
+	ChainOutput *ledgerstate.ChainOutput
+	// optional. Lists all outputs in the tx with the address of ChainAddress
+	Outputs []*ledgerstate.ExtendedLockedOutput
+}
+
+/////////////////////////////////
+
 // WaspFromNodeConfirmedTransactionMsg node sends (push) to wasp a confirmed transaction of interest
 // (with subscribed outputs).
 type WaspFromNodeConfirmedTransactionMsg struct {
