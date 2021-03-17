@@ -12,7 +12,7 @@ import (
 func TestAliasMint(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -51,7 +51,7 @@ func TestAliasMint(t *testing.T) {
 func TestChainForkFail(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -146,7 +146,7 @@ const chainLength = 10
 func TestChain1(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -214,7 +214,7 @@ func TestChain1(t *testing.T) {
 func TestChain3(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -302,7 +302,7 @@ func TestChain3(t *testing.T) {
 func TestChainWithExtendedOutput(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -387,7 +387,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 func TestRequestSendingPattern(t *testing.T) {
 	u := utxodb.New()
 	userRequester, addrRequester := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addrRequester)
+	err := u.RequestFunds(addrRequester)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addrRequester))

@@ -11,7 +11,7 @@ import (
 func TestSendIotas(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	_, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -41,7 +41,7 @@ const howMany = uint64(42)
 func TestSendIotasMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	_, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -77,7 +77,7 @@ func TestSendIotasMany(t *testing.T) {
 func TestSendIotas1FromMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	user2, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -157,7 +157,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 func TestSendIotasManyFromMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	user2, addr2 := utxodb.NewKeyPairByIndex(2)
