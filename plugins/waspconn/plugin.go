@@ -58,7 +58,6 @@ func configPlugin(plugin *node.Plugin) {
 		log.Infof("configured with UTXODB enabled")
 	} else {
 		ledger = tangleledger.New()
-		log.Infof("configured for ValueTangle")
 	}
 	ledger.OnTransactionConfirmed(func(tx *ledgerstate.Transaction) {
 		log.Debugf("on transaction confirmed: %s", tx.ID().String())
