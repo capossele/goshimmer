@@ -106,18 +106,17 @@ func (wconn *WaspConnector) parseOutputs(tx *ledgerstate.Transaction, chainAddre
 }
 
 func (wconn *WaspConnector) fetchSender(tx *ledgerstate.Transaction) (ledgerstate.Address, error) {
-	inputs, err := wconn.fetchInputs(tx.Essence().Outputs())
+	inputs, err := wconn.fetchInputs(tx.Essence().Inputs())
 	if err != nil {
 		return nil, err
 	}
 	return utxoutil.GetSingleSender(tx, inputs)
 }
 
-func (wconn *WaspConnector) fetchInputs(outs []ledgerstate.Output) ([]ledgerstate.Output, error) {
+func (wconn *WaspConnector) fetchInputs(outs []ledgerstate.Input) ([]ledgerstate.Output, error) {
 	inputs := make([]ledgerstate.Output, len(outs))
-	for i, out := range outs {
-		input := out.Input()
-		utxoInput, ok := out.Input().(*ledgerstate.UTXOInput)
+	for i, input := range outs {
+		utxoInput, ok := input.(*ledgerstate.UTXOInput)
 		if !ok {
 			wconn.log.Debugf("fetchInputs: unknown output type: %T", input)
 			continue

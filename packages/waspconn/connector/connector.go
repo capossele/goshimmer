@@ -206,7 +206,7 @@ func (wconn *WaspConnector) getTxInclusionState(txid ledgerstate.TransactionID) 
 }
 
 func (wconn *WaspConnector) getBacklog(addr *ledgerstate.AliasAddress) {
-	var txs map[ledgerstate.TransactionID]bool
+	txs := make(map[ledgerstate.TransactionID]bool)
 	wconn.vtangle.GetUnspentOutputs(addr, func(out ledgerstate.Output) {
 		txid := out.ID().TransactionID()
 		if isRequestOrChainOutput(out) {
