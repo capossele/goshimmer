@@ -19,7 +19,7 @@ import (
 type WaspConnector struct {
 	id                                 string
 	bconn                              *buffconn.BufferedConnection
-	subscriptions                      map[ledgerstate.Address]ledgerstate.Color
+	subscriptions                      map[[ledgerstate.AddressLength]byte]bool
 	inTxChan                           chan interface{}
 	exitConnChan                       chan struct{}
 	receiveConfirmedTransactionClosure *events.Closure
@@ -27,13 +27,13 @@ type WaspConnector struct {
 	receiveWaspMessageClosure          *events.Closure
 	messageChopper                     *chopper.Chopper
 	log                                *logger.Logger
-	vtangle                            waspconn.ValueTangle
+	vtangle                            waspconn.Ledger
 }
 
 type wrapConfirmedTx *ledgerstate.Transaction
 type wrapBookedTx *ledgerstate.Transaction
 
-func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.ValueTangle) {
+func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.Ledger) {
 	wconn := &WaspConnector{
 		bconn:          buffconn.NewBufferedConnection(conn, tangle.MaxMessageSize),
 		exitConnChan:   make(chan struct{}),
@@ -52,7 +52,7 @@ func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.ValueTangle) {
 			_ = wconn.bconn.Close()
 		}
 
-		go wconn.detach()
+		wconn.detach()
 	}, shutdown.PriorityTangle) // TODO proper priority
 
 	if err != nil {
@@ -77,7 +77,7 @@ func (wconn *WaspConnector) SetId(id string) {
 }
 
 func (wconn *WaspConnector) attach() {
-	wconn.subscriptions = make(map[ledgerstate.Address]ledgerstate.Color)
+	wconn.subscriptions = make(map[[ledgerstate.AddressLength]byte]bool)
 	wconn.inTxChan = make(chan interface{})
 
 	wconn.receiveConfirmedTransactionClosure = events.NewClosure(func(vtx *ledgerstate.Transaction) {
@@ -138,23 +138,39 @@ func (wconn *WaspConnector) detach() {
 	wconn.log.Debugf("detached waspconn")
 }
 
-func (wconn *WaspConnector) subscribe(addr ledgerstate.Address, color ledgerstate.Color) {
-	_, ok := wconn.subscriptions[addr]
+func (wconn *WaspConnector) subscribe(addr *ledgerstate.AliasAddress) {
+	_, ok := wconn.subscriptions[addr.Array()]
 	if !ok {
-		wconn.log.Infof("subscribed to address %s with color %s", addr.String(), color.String())
-		wconn.subscriptions[addr] = color
+		wconn.log.Infof("subscribed to address %s", addr.String())
+		wconn.subscriptions[addr.Array()] = true
 	}
 }
 
-func (wconn *WaspConnector) isSubscribed(addr ledgerstate.Address) bool {
-	_, ok := wconn.subscriptions[addr]
+func (wconn *WaspConnector) isSubscribed(addr *ledgerstate.AliasAddress) bool {
+	_, ok := wconn.subscriptions[addr.Array()]
 	return ok
 }
 
-func (wconn *WaspConnector) txSubscribedAddresses(tx *ledgerstate.Transaction) []ledgerstate.Address {
-	ret := make([]ledgerstate.Address, 0)
+func isRequestOrChainOutput(out ledgerstate.Output) bool {
+	switch out.(type) {
+	case *ledgerstate.ChainOutput:
+		return true
+	case *ledgerstate.ExtendedLockedOutput:
+		return true
+	}
+	return false
+}
+
+func (wconn *WaspConnector) txSubscribedAddresses(tx *ledgerstate.Transaction) []*ledgerstate.AliasAddress {
+	ret := make([]*ledgerstate.AliasAddress, 0)
 	for _, output := range tx.Essence().Outputs() {
-		addr := output.Address()
+		if !isRequestOrChainOutput(output) {
+			continue
+		}
+		addr, ok := output.Address().(*ledgerstate.AliasAddress)
+		if !ok {
+			continue
+		}
 		if wconn.isSubscribed(addr) {
 			ret = append(ret, addr)
 		}
@@ -165,32 +181,8 @@ func (wconn *WaspConnector) txSubscribedAddresses(tx *ledgerstate.Transaction) [
 // processConfirmedTransactionFromNode receives only confirmed transactions
 // it parses SC transaction incoming from the node. Forwards it to Wasp if subscribed
 func (wconn *WaspConnector) processConfirmedTransactionFromNode(tx *ledgerstate.Transaction) {
-	// determine if transaction contains any of subscribed addresses in its outputs
-	wconn.log.Debugw("processConfirmedTransactionFromNode", "txid", tx.ID().String())
-
-	subscribedOutAddresses := wconn.txSubscribedAddresses(tx)
-	if len(subscribedOutAddresses) == 0 {
-		wconn.log.Debugw("not subscribed", "txid", tx.ID().String())
-		// dismiss unsubscribed transaction
-		return
-	}
-	// for each subscribed address retrieve outputs and send to wasp with the transaction
-	wconn.log.Debugf("txid %s contains %d subscribed addresses", tx.ID().String(), len(subscribedOutAddresses))
-
-	for i := range subscribedOutAddresses {
-		outs := wconn.vtangle.GetAddressOutputs(subscribedOutAddresses[i])
-		bals := waspconn.OutputsToBalances(outs)
-		err := wconn.sendAddressUpdateToWasp(
-			subscribedOutAddresses[i],
-			bals,
-			tx,
-		)
-		if err != nil {
-			wconn.log.Errorf("sendAddressUpdateToWasp: %v", err)
-		} else {
-			wconn.log.Infof("confirmed tx -> Wasp: sc addr: %s, txid: %s",
-				subscribedOutAddresses[i].String(), tx.ID().String())
-		}
+	for _, addr := range wconn.txSubscribedAddresses(tx) {
+		wconn.pushTransaction(tx.ID(), addr)
 	}
 }
 
@@ -200,66 +192,34 @@ func (wconn *WaspConnector) processBookedTransactionFromNode(tx *ledgerstate.Tra
 		return
 	}
 	txid := tx.ID()
-	if err := wconn.sendBranchInclusionStateToWasp(ledgerstate.Pending, txid, addrs); err != nil {
-		wconn.log.Errorf("processBookedTransactionFromNode: %v", err)
-	} else {
-		wconn.log.Infof("booked tx -> Wasp. txid: %s", tx.ID().String())
-	}
+	wconn.log.Infof("booked tx -> Wasp. txid: %s", tx.ID().String())
+	wconn.sendTxInclusionStateToWasp(txid, ledgerstate.Pending)
 }
 
-func (wconn *WaspConnector) getConfirmedTransaction(txid ledgerstate.TransactionID) {
-	wconn.log.Debugf("requested transaction id = %s", txid.String())
+func (wconn *WaspConnector) getTxInclusionState(txid ledgerstate.TransactionID) {
+	state, err := wconn.vtangle.GetTxInclusionState(txid)
+	if err != nil {
+		wconn.log.Errorf("getTxInclusionState: %v", err)
+		return
+	}
+	wconn.sendTxInclusionStateToWasp(txid, state)
+}
 
-	found := wconn.vtangle.GetTransaction(txid, func(tx *ledgerstate.Transaction) {
-		state, _ := wconn.vtangle.GetBranchInclusionState(txid)
-		if state != ledgerstate.Confirmed {
-			wconn.log.Warnf("GetConfirmedTransaction: not confirmed %s", txid.String())
-			return
+func (wconn *WaspConnector) getBacklog(addr *ledgerstate.AliasAddress) {
+	var txs map[ledgerstate.TransactionID]bool
+	wconn.vtangle.GetUnspentOutputs(addr, func(out ledgerstate.Output) {
+		txid := out.ID().TransactionID()
+		if isRequestOrChainOutput(out) {
+			txs[txid] = true
 		}
-		if err := wconn.sendConfirmedTransactionToWasp(tx); err != nil {
-			wconn.log.Errorf("sendConfirmedTransactionToWasp: %v", err)
-			return
-		}
-		wconn.log.Infof("confirmed tx -> Wasp. txid = %s", txid.String())
 	})
-	if !found {
-		wconn.log.Warnf("GetConfirmedTransaction: not found %s", txid.String())
-		return
+	for txid := range txs {
+		wconn.pushTransaction(txid, addr)
 	}
 }
 
-func (wconn *WaspConnector) getBranchInclusionState(txid ledgerstate.TransactionID, addr ledgerstate.Address) {
-	state, found := wconn.vtangle.GetBranchInclusionState(txid)
-	if !found {
-		return
-	}
-	if err := wconn.sendBranchInclusionStateToWasp(state, txid, []ledgerstate.Address{addr}); err != nil {
-		wconn.log.Errorf("sendBranchInclusionStateToWasp: %v", err)
-		return
-	}
-}
-
-func (wconn *WaspConnector) getAddressBalance(addr ledgerstate.Address) {
-	wconn.log.Debugf("getAddressBalance request for address: %s", addr.String())
-
-	outputs := wconn.vtangle.GetAddressOutputs(addr)
-	if len(outputs) == 0 {
-		return
-	}
-	ret := waspconn.OutputsToBalances(outputs)
-
-	wconn.log.Debugf("sending balances to wasp: %s    %+v", addr.String(), ret)
-
-	if err := wconn.sendAddressOutputsToWasp(addr, ret); err != nil {
-		wconn.log.Debugf("sendAddressOutputsToWasp: %v", err)
-	}
-}
-
-func (wconn *WaspConnector) postTransaction(tx *ledgerstate.Transaction, fromSC ledgerstate.Address, fromLeader uint16) {
+func (wconn *WaspConnector) postTransaction(tx *ledgerstate.Transaction) {
 	if err := wconn.vtangle.PostTransaction(tx); err != nil {
 		wconn.log.Warnf("%v: %s", err, tx.ID().String())
-		return
 	}
-	wconn.log.Infof("Wasp -> Tangle. txid: %s, from sc: %s, from leader: %d",
-		tx.ID().String(), fromSC.String(), fromLeader)
 }

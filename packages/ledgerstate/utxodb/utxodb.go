@@ -14,9 +14,9 @@ func (u *UtxoDB) IsConfirmed(txid *ledgerstate.TransactionID) bool {
 	return ok
 }
 
-// AddTransaction adds transaction to UTXODB or return an error.
+// PostTransaction adds a transaction to UTXODB or returns an error.
 // The function ensures consistency of the UTXODB ledger
-func (u *UtxoDB) AddTransaction(tx *ledgerstate.Transaction) error {
+func (u *UtxoDB) PostTransaction(tx *ledgerstate.Transaction) error {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
@@ -43,6 +43,11 @@ func (u *UtxoDB) AddTransaction(tx *ledgerstate.Transaction) error {
 	}
 	u.transactions[tx.ID()] = tx
 	u.checkLedgerBalance()
+
+	if u.txConfirmedCallback != nil {
+		u.txConfirmedCallback(tx)
+	}
+
 	return nil
 }
 
@@ -70,6 +75,30 @@ func (u *UtxoDB) GetTransaction(id ledgerstate.TransactionID) (*ledgerstate.Tran
 	return u.getTransaction(id)
 }
 
+// GetConfirmedTransaction is the same as GetTransaction, but implementing the waspconn.Ledger interface
+func (u *UtxoDB) GetConfirmedTransaction(id ledgerstate.TransactionID, f func(tx *ledgerstate.Transaction)) bool {
+	u.mutex.RLock()
+	defer u.mutex.RUnlock()
+
+	tx, ok := u.getTransaction(id)
+	if ok {
+		f(tx)
+	}
+	return ok
+}
+
+// GetTxInclusionState returns the inclusion state of the tx by id
+func (u *UtxoDB) GetTxInclusionState(txid ledgerstate.TransactionID) (ledgerstate.InclusionState, error) {
+	u.mutex.RLock()
+	defer u.mutex.RUnlock()
+
+	_, ok := u.getTransaction(txid)
+	if ok {
+		return ledgerstate.Confirmed, nil
+	}
+	return 0, xerrors.Errorf("tx not found")
+}
+
 // MustGetTransaction same as GetTransaction only panics if transaction is not in UTXODB
 func (u *UtxoDB) MustGetTransaction(id ledgerstate.TransactionID) *ledgerstate.Transaction {
 	u.mutex.RLock()
@@ -83,6 +112,16 @@ func (u *UtxoDB) GetAddressOutputs(addr ledgerstate.Address) []ledgerstate.Outpu
 	defer u.mutex.RUnlock()
 
 	return u.getAddressOutputs(addr)
+}
+
+// GetUnspentOutputs is the same as GetAddressOutputs, but implementing the waspconn.Ledger interface
+func (u *UtxoDB) GetUnspentOutputs(addr ledgerstate.Address, f func(output ledgerstate.Output)) {
+	u.mutex.RLock()
+	defer u.mutex.RUnlock()
+
+	for _, out := range u.getAddressOutputs(addr) {
+		f(out)
+	}
 }
 
 // GetAddressBalances return all colored balances of the address
@@ -257,4 +296,14 @@ func (u *UtxoDB) GetChainOutputs(addr ledgerstate.Address) []*ledgerstate.ChainO
 		}
 	}
 	return ret
+}
+
+func (u *UtxoDB) OnTransactionConfirmed(f func(tx *ledgerstate.Transaction)) {
+	u.txConfirmedCallback = f
+}
+
+func (u *UtxoDB) OnTransactionBooked(f func(tx *ledgerstate.Transaction)) {
+}
+
+func (u *UtxoDB) Detach() {
 }

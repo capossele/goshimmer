@@ -36,7 +36,7 @@ func TestAddTransactionFail(t *testing.T) {
 	require.EqualValues(t, Supply-RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, RequestFundsAmount, u.BalanceIOTA(addr))
 	u.checkLedgerBalance()
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.Error(t, err)
 	u.checkLedgerBalance()
 }

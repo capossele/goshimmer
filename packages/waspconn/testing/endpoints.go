@@ -3,59 +3,82 @@ package testing
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/iotaledger/goshimmer/packages/waspconn"
 	"github.com/iotaledger/goshimmer/packages/waspconn/apilib"
 	"github.com/iotaledger/goshimmer/plugins/gracefulshutdown"
 	"github.com/iotaledger/goshimmer/plugins/webapi"
+	"github.com/iotaledger/goshimmer/plugins/webapi/value"
 	"github.com/labstack/echo"
-	"github.com/mr-tron/base58"
 )
 
-func addEndpoints(vtangle waspconn.ValueTangle) {
+func addEndpoints(vtangle waspconn.Ledger) {
 	t := &testingHandler{vtangle}
 
+	// TODO: replace real webapi endpoints, so that client does not need to know if
+	// utxodb is being used
+
+	// GET /value/unspentOutputs
 	webapi.Server().GET("/utxodb/outputs/:address", t.handleGetAddressOutputs)
+	// GET /value/transactionByID
 	webapi.Server().GET("/utxodb/inclusionstate/:txid", t.handleInclusionState)
+	// POST /value/sendTransaction
 	webapi.Server().POST("/utxodb/tx", t.handlePostTransaction)
+
+	// POST /faucet
 	webapi.Server().GET("/utxodb/requestfunds/:address", t.handleRequestFunds)
+
+	// TODO: this endpoint is only needed for wasp-cluster, because there is no way
+	// to programatically send a SIGINT to the process in Windows.
+	// There is a proposed solution here: https://github.com/golang/go/issues/28498
 	webapi.Server().GET("/adm/shutdown", handleShutdown)
 
 	log.Info("addded UTXODB endpoints")
 }
 
 type testingHandler struct {
-	vtangle waspconn.ValueTangle
+	vtangle waspconn.Ledger
 }
 
 func (t *testingHandler) handleGetAddressOutputs(c echo.Context) error {
-	log.Debugw("handleGetAddressOutputs")
 	addr, err := ledgerstate.AddressFromBase58EncodedString(c.Param("address"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, &apilib.GetAccountOutputsResponse{Err: err.Error()})
+		return c.JSON(http.StatusBadRequest, &value.UnspentOutputsResponse{Error: err.Error()})
 	}
-	outputs := t.vtangle.GetAddressOutputs(addr)
-	log.Debugf("handleGetAddressOutputs: addr %s from utxodb %+v", addr.String(), outputs)
 
-	out := make(map[string][]apilib.OutputBalance)
-	for txOutId, txOutputs := range outputs {
-		txOut := make([]apilib.OutputBalance, 0)
-		txOutputs.ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			txOut = append(txOut, apilib.OutputBalance{
-				Value: balance,
-				Color: color.Base58(),
+	var outs []value.OutputID
+	t.vtangle.GetUnspentOutputs(addr, func(output ledgerstate.Output) {
+		var b []value.Balance
+		output.Balances().ForEach(func(color ledgerstate.Color, balance uint64) bool {
+			b = append(b, value.Balance{
+				Value: int64(balance),
+				Color: color.String(),
 			})
 			return true
 		})
-		out[txOutId.String()] = txOut
-	}
-	log.Debugw("handleGetAddressOutputs", "sending", out)
 
-	return c.JSONPretty(http.StatusOK, &apilib.GetAccountOutputsResponse{
-		Address: c.Param("address"),
-		Outputs: out,
-	}, " ")
+		var timestamp time.Time
+		t.vtangle.GetConfirmedTransaction(output.ID().TransactionID(), func(tx *ledgerstate.Transaction) {
+			timestamp = tx.Essence().Timestamp()
+		})
+
+		outs = append(outs, value.OutputID{
+			ID:             output.ID().Base58(),
+			Balances:       b,
+			InclusionState: value.InclusionState{Confirmed: true},
+			Metadata:       value.Metadata{Timestamp: timestamp},
+		})
+	})
+	return c.JSON(http.StatusOK, &value.UnspentOutputsResponse{
+		UnspentOutputs: []value.UnspentOutput{
+			value.UnspentOutput{
+				Address:   addr.Base58(),
+				OutputIDs: nil,
+			},
+		},
+	})
 }
 
 func (t *testingHandler) handlePostTransaction(c echo.Context) error {
@@ -64,21 +87,13 @@ func (t *testingHandler) handlePostTransaction(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, &apilib.PostTransactionResponse{Err: err.Error()})
 	}
 
-	txBytes, err := base58.Decode(req.Tx)
+	tx, _, err := ledgerstate.TransactionFromBytes(req.Tx)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, &apilib.PostTransactionResponse{Err: err.Error()})
 	}
-
-	tx, _, err := ledgerstate.TransactionFromBytes(txBytes)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, &apilib.PostTransactionResponse{Err: err.Error()})
-	}
-
-	log.Debugf("handlePostTransaction:utxodb.AddTransaction: txid %s", tx.ID().String())
 
 	err = t.vtangle.PostTransaction(tx)
 	if err != nil {
-		log.Warnf("handlePostTransaction:utxodb.AddTransaction: txid %s err = %v", tx.ID().String(), err)
 		return c.JSON(http.StatusConflict, &apilib.PostTransactionResponse{Err: err.Error()})
 	}
 
@@ -91,16 +106,14 @@ func handleShutdown(c echo.Context) error {
 }
 
 func (t *testingHandler) handleInclusionState(c echo.Context) error {
-	log.Debugw("handleInclusionState")
 	txid, err := ledgerstate.TransactionIDFromBase58(c.Param("txid"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, &apilib.InclusionStateResponse{Err: err.Error()})
 	}
-	state, found := t.vtangle.GetBranchInclusionState(txid)
-	if !found {
-		return c.JSON(http.StatusNotFound, &apilib.InclusionStateResponse{Err: "Not found"})
+	state, err := t.vtangle.GetTxInclusionState(txid)
+	if err != nil {
+		return c.JSON(http.StatusNotFound, &apilib.InclusionStateResponse{Err: err.Error()})
 	}
-	log.Debugf("handleInclusionState: txid %s state = %v", txid.String(), state)
 
 	return c.JSON(http.StatusOK, &apilib.InclusionStateResponse{State: state})
 }
