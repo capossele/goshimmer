@@ -6,11 +6,9 @@ import (
 	"strings"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
-	"github.com/iotaledger/goshimmer/packages/shutdown"
 	"github.com/iotaledger/goshimmer/packages/tangle"
 	"github.com/iotaledger/goshimmer/packages/waspconn"
 	"github.com/iotaledger/goshimmer/packages/waspconn/chopper"
-	"github.com/iotaledger/hive.go/daemon"
 	"github.com/iotaledger/hive.go/events"
 	"github.com/iotaledger/hive.go/logger"
 	"github.com/iotaledger/hive.go/netutil/buffconn"
@@ -33,7 +31,7 @@ type WaspConnector struct {
 type wrapConfirmedTx *ledgerstate.Transaction
 type wrapBookedTx *ledgerstate.Transaction
 
-func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.Ledger) {
+func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.Ledger, shutdownSignal <-chan struct{}) {
 	wconn := &WaspConnector{
 		bconn:          buffconn.NewBufferedConnection(conn, tangle.MaxMessageSize),
 		exitConnChan:   make(chan struct{}),
@@ -41,26 +39,19 @@ func Run(conn net.Conn, log *logger.Logger, vtangle waspconn.Ledger) {
 		log:            log,
 		vtangle:        vtangle,
 	}
-	err := daemon.BackgroundWorker(wconn.Id(), func(shutdownSignal <-chan struct{}) {
-		select {
-		case <-shutdownSignal:
-			wconn.log.Infof("shutdown signal received..")
-			_ = wconn.bconn.Close()
 
-		case <-wconn.exitConnChan:
-			wconn.log.Infof("closing connection..")
-			_ = wconn.bconn.Close()
-		}
-
-		wconn.detach()
-	}, shutdown.PriorityTangle) // TODO proper priority
-
-	if err != nil {
-		close(wconn.exitConnChan)
-		wconn.log.Errorf("can't start deamon")
-		return
-	}
 	wconn.attach()
+	defer wconn.detach()
+
+	select {
+	case <-shutdownSignal:
+		wconn.log.Infof("shutdown signal received..")
+		_ = wconn.bconn.Close()
+
+	case <-wconn.exitConnChan:
+		wconn.log.Infof("closing connection..")
+		_ = wconn.bconn.Close()
+	}
 }
 
 func (wconn *WaspConnector) Id() string {
@@ -135,7 +126,7 @@ func (wconn *WaspConnector) detach() {
 	wconn.messageChopper.Close()
 	close(wconn.inTxChan)
 	_ = wconn.bconn.Close()
-	wconn.log.Debugf("detached waspconn")
+	wconn.log.Debugf("stopped waspconn")
 }
 
 func (wconn *WaspConnector) subscribe(addr *ledgerstate.AliasAddress) {

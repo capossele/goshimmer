@@ -90,7 +90,7 @@ func runPlugin(_ *node.Plugin) {
 					return
 				}
 				log.Debugf("accepted connection from %s", conn.RemoteAddr().String())
-				connector.Run(conn, log, ledger)
+				go connector.Run(conn, log, ledger, shutdownSignal)
 			}
 		}()
 
