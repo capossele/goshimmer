@@ -7,11 +7,10 @@ import (
 	"net/http"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
-	"github.com/mr-tron/base58"
 )
 
 type PostTransactionRequest struct {
-	Tx string `json:"tx"` // Transaction.Bytes() encoded as base58
+	Tx []byte
 }
 
 type PostTransactionResponse struct {
@@ -19,7 +18,7 @@ type PostTransactionResponse struct {
 }
 
 func PostTransaction(netLoc string, tx *ledgerstate.Transaction) error {
-	req := &PostTransactionRequest{Tx: base58.Encode(tx.Bytes())}
+	req := &PostTransactionRequest{Tx: tx.Bytes()}
 	data, err := json.Marshal(req)
 	if err != nil {
 		return err

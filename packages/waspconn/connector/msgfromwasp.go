@@ -27,36 +27,26 @@ func (wconn *WaspConnector) processMsgDataFromWasp(data []byte) {
 			wconn.processMsgDataFromWasp(finalMsg)
 		}
 
-	case *waspconn.WaspPingMsg:
-		wconn.log.Debugf("PING %d received", msg.Id)
-		if err := wconn.sendMsgToWasp(msg); err != nil {
-			wconn.log.Errorf("responding to ping: %v", err)
-		}
-
-	case *waspconn.WaspToNodeTransactionMsg:
-		wconn.postTransaction(msg.Tx, msg.SCAddress, msg.Leader)
+	case *waspconn.WaspToNodePostTransactionMsg:
+		wconn.postTransaction(msg.Tx)
 
 	case *waspconn.WaspToNodeSubscribeMsg:
-		for _, addrCol := range msg.AddressesWithColors {
-			wconn.subscribe(addrCol.Address, addrCol.Color)
+		for _, addr := range msg.ChainAddresses {
+			wconn.subscribe(addr)
+			wconn.getBacklog(addr)
 		}
-		go func() {
-			for _, addrCol := range msg.AddressesWithColors {
-				wconn.pushBacklogToWasp(addrCol.Address, addrCol.Color)
-			}
-		}()
 
 	case *waspconn.WaspToNodeGetConfirmedTransactionMsg:
-		wconn.getConfirmedTransaction(msg.TxId)
+		wconn.pushTransaction(msg.TxID, msg.ChainAddress)
 
-	case *waspconn.WaspToNodeGetBranchInclusionStateMsg:
-		wconn.getBranchInclusionState(msg.TxId, msg.SCAddress)
+	case *waspconn.WaspToNodeGetTxInclusionStateMsg:
+		wconn.getTxInclusionState(msg.TxID)
 
-	case *waspconn.WaspToNodeGetOutputsMsg:
-		wconn.getAddressBalance(msg.Address)
+	case *waspconn.WaspToNodeGetBacklogMsg:
+		wconn.getBacklog(msg.ChainAddress)
 
 	case *waspconn.WaspToNodeSetIdMsg:
-		wconn.SetId(msg.Waspid)
+		wconn.SetId(msg.WaspID)
 
 	default:
 		panic("wrong msg type")

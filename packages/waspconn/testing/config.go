@@ -8,7 +8,7 @@ import (
 
 var log *logger.Logger
 
-func Config(_ *node.Plugin, setLog *logger.Logger, vtangle waspconn.ValueTangle) {
+func Config(_ *node.Plugin, setLog *logger.Logger, vtangle waspconn.Ledger) {
 	log = setLog.Named("testing")
 	addEndpoints(vtangle)
 }
