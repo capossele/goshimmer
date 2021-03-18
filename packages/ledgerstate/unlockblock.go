@@ -85,6 +85,12 @@ func UnlockBlockFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (unlockBlo
 			err = xerrors.Errorf("failed to parse ReferenceUnlockBlock from MarshalUtil: %w", err)
 			return
 		}
+	case AliasUnlockBlockType:
+		if unlockBlock, err = AliasUnlockBlockFromMarshalUtil(marshalUtil); err != nil {
+			err = xerrors.Errorf("failed to parse AliasUnlockBlock from MarshalUtil: %w", err)
+			return
+		}
+
 	default:
 		err = xerrors.Errorf("unsupported UnlockBlockType (%X): %w", unlockBlockType, cerrors.ErrParseBytesFailed)
 		return

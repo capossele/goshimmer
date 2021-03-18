@@ -157,6 +157,8 @@ func SelectConsumed(consumables ...*ConsumableOutput) []*ConsumableOutput {
 	return ret
 }
 
+// MakeUTXOInputs from the list of consumables makes sorted inputs and return corresponding
+// outputs in the same (changed) order
 func MakeUTXOInputs(consumables ...*ConsumableOutput) (ledgerstate.Inputs, []ledgerstate.Output) {
 	inputs := make(ledgerstate.Inputs, len(consumables))
 	origOrderOfInputs := make([]ledgerstate.OutputID, len(inputs))
@@ -165,30 +167,25 @@ func MakeUTXOInputs(consumables ...*ConsumableOutput) (ledgerstate.Inputs, []led
 		origOrderOfInputs[i] = inp.ReferencedOutputID()
 		inputs[i] = inp
 	}
+	// Sorts!!! So we have to track corresponding outputs too
 	retInputs := ledgerstate.NewInputs(inputs...)
 	if len(retInputs) != len(origOrderOfInputs) {
 		panic("duplicate inputs")
 	}
-	permutation := make([]int, len(origOrderOfInputs))
-	for i := range retInputs {
-		permutation[i] = getInputIndex(retInputs, origOrderOfInputs[i])
-	}
-	// Sorts!!! So we have to track corresponding outputs too
+	permutation := getPermutation(retInputs)
 	retConsumedOutputs := make([]ledgerstate.Output, len(retInputs))
-	for i := range retConsumedOutputs {
-		retConsumedOutputs[i] = consumables[permutation[i]].output
+	for _, out := range consumables {
+		retConsumedOutputs[permutation[out.output.ID()]] = out.output
 	}
-	return inputs, retConsumedOutputs
+	return retInputs, retConsumedOutputs
 }
 
-func getInputIndex(inputs ledgerstate.Inputs, oid ledgerstate.OutputID) int {
+func getPermutation(inputs ledgerstate.Inputs) map[ledgerstate.OutputID]int {
+	ret := make(map[ledgerstate.OutputID]int)
 	for i := range inputs {
-		inp := inputs[i].(*ledgerstate.UTXOInput)
-		if inp.ReferencedOutputID() == oid {
-			return i
-		}
+		ret[inputs[i].(*ledgerstate.UTXOInput).ReferencedOutputID()] = i
 	}
-	panic("inconsistency: can't find input index")
+	return ret
 }
 
 func FindChainConsumableInput(aliasAddr ledgerstate.Address, consumables ...*ConsumableOutput) (*ledgerstate.ChainOutput, int, bool) {
