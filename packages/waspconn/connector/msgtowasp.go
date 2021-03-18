@@ -8,7 +8,6 @@ import (
 	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxoutil"
 	"github.com/iotaledger/goshimmer/packages/tangle"
 	"github.com/iotaledger/goshimmer/packages/waspconn"
-	"golang.org/x/crypto/blake2b"
 )
 
 func (wconn *WaspConnector) sendMsgToWasp(msg waspconn.Message) {
@@ -56,53 +55,20 @@ func (wconn *WaspConnector) sendTxInclusionStateToWasp(txid ledgerstate.Transact
 
 func (wconn *WaspConnector) pushTransaction(txid ledgerstate.TransactionID, chainAddress *ledgerstate.AliasAddress) {
 	found := wconn.vtangle.GetConfirmedTransaction(txid, func(tx *ledgerstate.Transaction) {
-		chainOutput, reqs := wconn.parseOutputs(tx, chainAddress)
 		sender, err := wconn.fetchSender(tx)
 		if err != nil {
 			wconn.log.Errorf("fetchSender: %s", err.Error())
 			return
 		}
-
 		wconn.sendMsgToWasp(&waspconn.WaspFromNodeTransactionMsg{
-			TxID:         txid,
 			ChainAddress: chainAddress,
+			Tx:           tx,
 			Sender:       sender,
-			MintProofs:   wconn.getMintProofs(tx),
-			ChainOutput:  chainOutput,
-			Outputs:      reqs,
 		})
 	})
 	if !found {
 		wconn.log.Warnf("pushTransaction: not found %s", txid.String())
 	}
-}
-
-func (wconn *WaspConnector) getMintProofs(tx *ledgerstate.Transaction) *ledgerstate.ColoredBalances {
-	mintProofs := make(map[ledgerstate.Color]uint64)
-	for _, out := range tx.Essence().Outputs() {
-		out.Balances().ForEach(func(color ledgerstate.Color, balance uint64) bool {
-			if color == ledgerstate.ColorMint {
-				mintProofs[ledgerstate.Color(blake2b.Sum256(out.ID().Bytes()))] = balance
-			}
-			return true
-		})
-	}
-	return ledgerstate.NewColoredBalances(mintProofs)
-}
-
-func (wconn *WaspConnector) parseOutputs(tx *ledgerstate.Transaction, chainAddress *ledgerstate.AliasAddress) (chainOutput *ledgerstate.ChainOutput, reqs []*ledgerstate.ExtendedLockedOutput) {
-	for _, out := range tx.Essence().Outputs() {
-		if !out.Address().Equals(chainAddress) {
-			continue
-		}
-		switch out := out.(type) {
-		case *ledgerstate.ChainOutput:
-			chainOutput = out
-		case *ledgerstate.ExtendedLockedOutput:
-			reqs = append(reqs, out)
-		}
-	}
-	return
 }
 
 func (wconn *WaspConnector) fetchSender(tx *ledgerstate.Transaction) (ledgerstate.Address, error) {

@@ -78,18 +78,12 @@ type WaspToNodeSetIdMsg struct {
 // Goshimmer --> Wasp
 
 type WaspFromNodeTransactionMsg struct {
-	// TxID is mandatory id of transaction where information has been collected from
-	TxID ledgerstate.TransactionID
-	// ChainAddress is mandatory chain address of interest (subscribed), the filter for the info
+	// ChainAddress is the chain address of interest (subscribed)
 	ChainAddress *ledgerstate.AliasAddress
-	// Sender is a unique sender of the transaction of TxId
+	// Tx is the transaction being sent
+	Tx *ledgerstate.Transaction
+	// Sender is the unique sender of the transaction
 	Sender ledgerstate.Address
-	// MintProofs mint proofs present in the transaction TxId
-	MintProofs *ledgerstate.ColoredBalances
-	// ChainOutput is optionally set if a chain output is present in the tx. Must have address == ChainAddress
-	ChainOutput *ledgerstate.ChainOutput
-	// Outputs lists all ExtendedLockedOutputs in the tx with Address() == ChainAddress
-	Outputs []*ledgerstate.ExtendedLockedOutput
 }
 
 // WaspFromNodeTxInclusionStateMsg update to the transaction status
@@ -288,52 +282,21 @@ func (msg *WaspToNodeSetIdMsg) Type() MessageType {
 }
 
 func (msg *WaspFromNodeTransactionMsg) Write(w *marshalutil.MarshalUtil) {
-	w.Write(msg.TxID)
 	w.Write(msg.ChainAddress)
+	w.Write(msg.Tx)
 	w.Write(msg.Sender)
-	w.Write(msg.MintProofs)
-	w.WriteBool(msg.ChainOutput != nil)
-	if msg.ChainOutput != nil {
-		w.Write(msg.ChainOutput)
-	}
-	w.WriteUint16(uint16(len(msg.Outputs)))
-	for _, out := range msg.Outputs {
-		w.Write(out)
-	}
 }
 
 func (msg *WaspFromNodeTransactionMsg) Read(m *marshalutil.MarshalUtil) error {
 	var err error
-	if msg.TxID, err = ledgerstate.TransactionIDFromMarshalUtil(m); err != nil {
+	if msg.ChainAddress, err = ledgerstate.AliasAddressFromMarshalUtil(m); err != nil {
 		return err
 	}
-	if msg.ChainAddress, err = ledgerstate.AliasAddressFromMarshalUtil(m); err != nil {
+	if msg.Tx, err = ledgerstate.TransactionFromMarshalUtil(m); err != nil {
 		return err
 	}
 	if msg.Sender, err = ledgerstate.AddressFromMarshalUtil(m); err != nil {
 		return err
-	}
-	if msg.MintProofs, err = ledgerstate.ColoredBalancesFromMarshalUtil(m); err != nil {
-		return err
-	}
-	var chainOutputPresent bool
-	if chainOutputPresent, err = m.ReadBool(); err != nil {
-		return err
-	}
-	if chainOutputPresent {
-		if msg.ChainOutput, err = ledgerstate.ChainOutputFromMarshalUtil(m); err != nil {
-			return err
-		}
-	}
-	var size uint16
-	if size, err = m.ReadUint16(); err != nil {
-		return err
-	}
-	msg.Outputs = make([]*ledgerstate.ExtendedLockedOutput, size)
-	for i := uint16(0); i < size; i++ {
-		if msg.Outputs[i], err = ledgerstate.ExtendedOutputFromMarshalUtil(m); err != nil {
-			return err
-		}
 	}
 	return nil
 }
