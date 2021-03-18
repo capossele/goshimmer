@@ -6,49 +6,26 @@ import (
 	"net/http"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
+	"github.com/iotaledger/goshimmer/plugins/webapi/value"
 )
 
-type OutputBalance struct {
-	Value uint64 `json:"value"`
-	Color string `json:"color"` // base58
-}
-
-type GetAccountOutputsResponse struct {
-	Address string                     `json:"address"` // base58
-	Outputs map[string][]OutputBalance `json:"outputs"` // map[output id as base58]balance
-	Err     string                     `json:"err"`
-}
-
-func GetAccountOutputs(netLoc string, address ledgerstate.Address) (map[ledgerstate.OutputID]*ledgerstate.ColoredBalances, error) {
+func GetAddressOutputs(netLoc string, address ledgerstate.Address) ([]value.OutputID, error) {
 	url := fmt.Sprintf("http://%s/utxodb/outputs/%s", netLoc, address.Base58())
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
-	res := &GetAccountOutputsResponse{}
+	res := &value.UnspentOutputsResponse{}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK || res.Err != "" {
-		return nil, fmt.Errorf("%s returned code %d: %s", url, resp.StatusCode, res.Err)
+	if resp.StatusCode != http.StatusOK || res.Error != "" {
+		return nil, fmt.Errorf("%s returned code %d -- %s", url, resp.StatusCode, res.Error)
+	}
+	if len(res.UnspentOutputs) != 1 || res.UnspentOutputs[0].Address != address.Base58() {
+		return nil, fmt.Errorf("return value does not contain outputs for address")
 	}
 
-	outputs := make(map[ledgerstate.OutputID]*ledgerstate.ColoredBalances)
-	for k, v := range res.Outputs {
-		id, err := ledgerstate.OutputIDFromBase58(k)
-		if err != nil {
-			return nil, err
-		}
-		balances := make(map[ledgerstate.Color]uint64)
-		for _, b := range v {
-			color, err := ledgerstate.ColorFromBase58EncodedString(b.Color)
-			if err != nil {
-				return nil, err
-			}
-			balances[color] = b.Value
-		}
-		outputs[id] = ledgerstate.NewColoredBalances(balances)
-	}
-	return outputs, nil
+	return res.UnspentOutputs[0].OutputIDs, nil
 }

@@ -72,30 +72,16 @@ tokens and send origin transactions of corresponding colors if they contain unsp
 This is how backlog of requests is handled on the tangle.
 
 ## Configuration
+
 All configuration values for the WaspConn plugin are in the `waspconn` portion of the `config.json` file.
+
 ```
   "waspconn": {
     "port": 5000,
     "utxodbenabled": true,
-    "utxodbconfirmseconds": 0,
-    "utxodbconfirmrandomize": false,
-    "utxodbconfirmfirst": true
   }
 ```
+
 - `waspconn.port` specifies port where WaspCon is listening for new Wasp connections.
-- `waspconn.utxodbenabled` is a boolean flag which specifies if WaspConn is mocking the value tangle (`true`) or it 
-is using the ValueTangle provided by Goshimmer.
-
-If `waspconn.utxodbenabled: true` the following values configure parameters of mocked of the Value Tangle:
-
-- `waspconn.utxodbconfirmseconds` specifies emulated confirmation time. When new transaction is posted, 
-specified amount of seconds it is in `pending` state, and only after the confirmation time it is included 
-into the `utxodb` ledger.
-`0` seconds means it is included immediately and result is known to the posting call synchronously.
-- `waspconn.utxodbconfirmrandomize` if `false`, the emulated confirmation time is constant, 
-if `true` it is uniformly distributed around the confirmation time parameter.
--  `waspconn.utxodbconfirmfirst` determines behavior in case of conflicting transactions. If `true`, 
-eventually the first out of all conflicting transactions will be included into `utxodb` ledger. If `false` 
-all conflicting transactions will be rejected within duration period between posting first of them and 
-the supposed confirmation deadline.
-   
+- `waspconn.utxodbenabled` is a boolean flag which specifies if WaspConn is mocking the value tangle (`true`) or
+accessing the tangle provided by Goshimmer.

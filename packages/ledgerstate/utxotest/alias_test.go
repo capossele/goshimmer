@@ -12,7 +12,7 @@ import (
 func TestAliasMint(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -32,7 +32,7 @@ func TestAliasMint(t *testing.T) {
 	tx, err := txb.BuildWithED25519(user)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	chained, err := utxoutil.GetSingleChainedOutput(tx.Essence())
@@ -51,7 +51,7 @@ func TestAliasMint(t *testing.T) {
 func TestChainForkFail(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -72,7 +72,7 @@ func TestChainForkFail(t *testing.T) {
 	tx, err := txb.BuildWithED25519(user)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := u.GetSingleSender(tx)
@@ -99,7 +99,7 @@ func TestChainForkFail(t *testing.T) {
 	require.NoError(t, err)
 	tx, err = txb.BuildWithED25519(user)
 	require.NoError(t, err)
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	require.EqualValues(t, utxodb.RequestFundsAmount-300, int(u.BalanceIOTA(addr)))
@@ -137,7 +137,7 @@ func TestChainForkFail(t *testing.T) {
 	require.NoError(t, err)
 
 	// adding forked chain must fail
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.Error(t, err)
 }
 
@@ -146,7 +146,7 @@ const chainLength = 10
 func TestChain1(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -167,7 +167,7 @@ func TestChain1(t *testing.T) {
 	tx, err := txb.BuildWithED25519(user)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := u.GetSingleSender(tx)
@@ -198,7 +198,7 @@ func TestChain1(t *testing.T) {
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
 
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := u.GetSingleSender(tx)
@@ -214,7 +214,7 @@ func TestChain1(t *testing.T) {
 func TestChain3(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -235,7 +235,7 @@ func TestChain3(t *testing.T) {
 	tx, err := txb.BuildWithED25519(user)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -265,7 +265,7 @@ func TestChain3(t *testing.T) {
 		require.NoError(t, err)
 		tx, err := txb.BuildWithED25519(user)
 		require.NoError(t, err)
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := u.GetSingleSender(tx)
@@ -286,7 +286,7 @@ func TestChain3(t *testing.T) {
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
 
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err = u.GetSingleSender(tx)
@@ -302,7 +302,7 @@ func TestChain3(t *testing.T) {
 func TestChainWithExtendedOutput(t *testing.T) {
 	u := utxodb.New()
 	user, addr := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addr)
+	err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
@@ -323,7 +323,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 	tx, err := txb.BuildWithED25519(user)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := u.GetSingleSender(tx)
@@ -352,7 +352,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		require.NoError(t, err)
 		tx, err := txb.BuildWithED25519(user)
 		require.NoError(t, err)
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -372,7 +372,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		tx, err = txb.BuildWithED25519(userStateControl)
 		require.NoError(t, err)
 
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err = utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -387,7 +387,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 func TestRequestSendingPattern(t *testing.T) {
 	u := utxodb.New()
 	userRequester, addrRequester := utxodb.NewKeyPairByIndex(2)
-	_, err := u.RequestFunds(addrRequester)
+	err := u.RequestFunds(addrRequester)
 	require.NoError(t, err)
 	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addrRequester))
@@ -409,7 +409,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	tx, err := txb.BuildWithED25519(userRequester)
 	require.NoError(t, err)
 
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -439,7 +439,7 @@ func TestRequestSendingPattern(t *testing.T) {
 		require.NoError(t, err)
 		tx, err := txb.BuildWithED25519(userRequester)
 		require.NoError(t, err)
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -461,7 +461,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	tx, err = txb.BuildWithED25519(userStateControl)
 	require.NoError(t, err)
 	//
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err = utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())

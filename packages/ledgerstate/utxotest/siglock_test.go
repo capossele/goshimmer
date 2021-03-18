@@ -11,7 +11,7 @@ import (
 func TestSendIotas(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	_, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -29,7 +29,7 @@ func TestSendIotas(t *testing.T) {
 
 	tx, err := txb.BuildWithED25519(user1)
 	require.NoError(t, err)
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	require.EqualValues(t, utxodb.RequestFundsAmount-42, u.BalanceIOTA(addr1))
@@ -41,7 +41,7 @@ const howMany = uint64(42)
 func TestSendIotasMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	_, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -63,7 +63,7 @@ func TestSendIotasMany(t *testing.T) {
 		tx, err := txb.BuildWithED25519(user1)
 		require.NoError(t, err)
 
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -77,7 +77,7 @@ func TestSendIotasMany(t *testing.T) {
 func TestSendIotas1FromMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	user2, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -100,7 +100,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 
 		tx, err := txb.BuildWithED25519(user1)
 		require.NoError(t, err)
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -122,7 +122,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := txb.BuildWithED25519(user2)
 	require.NoError(t, err)
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -143,7 +143,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 	require.NoError(t, err)
 	tx, err = txb.BuildWithED25519(user2)
 	require.NoError(t, err)
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err = utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -157,7 +157,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 func TestSendIotasManyFromMany(t *testing.T) {
 	u := utxodb.New()
 	user1, addr1 := utxodb.NewKeyPairByIndex(1)
-	_, err := u.RequestFunds(addr1)
+	err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
 	user2, addr2 := utxodb.NewKeyPairByIndex(2)
@@ -178,7 +178,7 @@ func TestSendIotasManyFromMany(t *testing.T) {
 		require.NoError(t, err)
 		tx, err := txb.BuildWithED25519(user1)
 		require.NoError(t, err)
-		err = u.AddTransaction(tx)
+		err = u.PostTransaction(tx)
 		require.NoError(t, err)
 
 		sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
@@ -197,7 +197,7 @@ func TestSendIotasManyFromMany(t *testing.T) {
 	require.NoError(t, err)
 	tx, err := txb.BuildWithED25519(user2)
 	require.NoError(t, err)
-	err = u.AddTransaction(tx)
+	err = u.PostTransaction(tx)
 	require.NoError(t, err)
 
 	sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())

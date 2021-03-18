@@ -24,12 +24,13 @@ var (
 
 // UtxoDB is the structure which contains all UTXODB transactions and ledger
 type UtxoDB struct {
-	genesisKeyPair  *ed25519.KeyPair
-	transactions    map[ledgerstate.TransactionID]*ledgerstate.Transaction
-	utxo            map[ledgerstate.OutputID]ledgerstate.Output
-	consumedOutputs map[ledgerstate.OutputID]ledgerstate.Output
-	mutex           *sync.RWMutex
-	genesisTxId     ledgerstate.TransactionID
+	genesisKeyPair      *ed25519.KeyPair
+	transactions        map[ledgerstate.TransactionID]*ledgerstate.Transaction
+	utxo                map[ledgerstate.OutputID]ledgerstate.Output
+	consumedOutputs     map[ledgerstate.OutputID]ledgerstate.Output
+	mutex               sync.RWMutex
+	genesisTxId         ledgerstate.TransactionID
+	txConfirmedCallback func(tx *ledgerstate.Transaction)
 }
 
 // New creates new UTXODB instance
@@ -39,7 +40,6 @@ func New() *UtxoDB {
 		transactions:    make(map[ledgerstate.TransactionID]*ledgerstate.Transaction),
 		utxo:            make(map[ledgerstate.OutputID]ledgerstate.Output),
 		consumedOutputs: make(map[ledgerstate.OutputID]ledgerstate.Output),
-		mutex:           &sync.RWMutex{},
 	}
 	u.genesisInit()
 	return u
@@ -92,7 +92,7 @@ func (u *UtxoDB) mustRequestFundsTx(target ledgerstate.Address) *ledgerstate.Tra
 }
 
 // RequestFunds implements faucet: it sends 1337 IOTA tokens from genesis to the given address.
-func (u *UtxoDB) RequestFunds(target ledgerstate.Address) (*ledgerstate.Transaction, error) {
+func (u *UtxoDB) RequestFunds(target ledgerstate.Address) error {
 	tx := u.mustRequestFundsTx(target)
-	return tx, u.AddTransaction(tx)
+	return u.PostTransaction(tx)
 }
