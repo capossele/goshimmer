@@ -1,10 +1,8 @@
 package utxodb
 
 import (
-	"testing"
-
-	"github.com/iotaledger/goshimmer/packages/ledgerstate"
 	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 func TestBasic(t *testing.T) {
@@ -23,7 +21,7 @@ func TestGenesis(t *testing.T) {
 func TestRequestFunds(t *testing.T) {
 	u := New()
 	_, addr := NewKeyPairByIndex(2)
-	err := u.RequestFunds(addr)
+	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, Supply-RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, RequestFundsAmount, u.BalanceIOTA(addr))
@@ -33,18 +31,12 @@ func TestRequestFunds(t *testing.T) {
 func TestAddTransactionFail(t *testing.T) {
 	u := New()
 	_, addr := NewKeyPairByIndex(2)
-	err := u.RequestFunds(addr)
+	tx, err := u.RequestFunds(addr)
 	require.NoError(t, err)
 	require.EqualValues(t, Supply-RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, RequestFundsAmount, u.BalanceIOTA(addr))
 	u.checkLedgerBalance()
-
-	var tx *ledgerstate.Transaction
-	for _, out := range u.GetAddressOutputs(addr) {
-		tx, _ = u.GetTransaction(out.ID().TransactionID())
-	}
-
-	err = u.PostTransaction(tx)
+	err = u.AddTransaction(tx)
 	require.Error(t, err)
 	u.checkLedgerBalance()
 }

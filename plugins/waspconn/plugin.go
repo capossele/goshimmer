@@ -6,12 +6,12 @@ import (
 	"sync"
 
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
-	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxodb"
 	"github.com/iotaledger/goshimmer/packages/shutdown"
 	"github.com/iotaledger/goshimmer/packages/waspconn"
 	"github.com/iotaledger/goshimmer/packages/waspconn/connector"
 	"github.com/iotaledger/goshimmer/packages/waspconn/tangleledger"
 	"github.com/iotaledger/goshimmer/packages/waspconn/testing"
+	"github.com/iotaledger/goshimmer/packages/waspconn/utxodbledger"
 	"github.com/iotaledger/goshimmer/plugins/config"
 	"github.com/iotaledger/hive.go/daemon"
 	"github.com/iotaledger/hive.go/logger"
@@ -53,7 +53,7 @@ func configPlugin(plugin *node.Plugin) {
 	utxodbEnabled := config.Node().Bool(WaspConnUtxodbEnabled)
 
 	if utxodbEnabled {
-		ledger = utxodb.New()
+		ledger = utxodbledger.New()
 		testing.Config(plugin, log, ledger)
 		log.Infof("configured with UTXODB enabled")
 	} else {
