@@ -20,6 +20,11 @@ func (u *UtxoDB) PostTransaction(tx *ledgerstate.Transaction) error {
 	u.mutex.Lock()
 	defer u.mutex.Unlock()
 
+	// serialize/deserialize for proper semantic check
+	tx, _, err := ledgerstate.TransactionFromBytes(tx.Bytes())
+	if err != nil {
+		return err
+	}
 	if err := u.CheckTransaction(tx); err != nil {
 		return err
 	}

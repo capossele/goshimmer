@@ -158,13 +158,37 @@ func SelectConsumed(consumables ...*ConsumableOutput) []*ConsumableOutput {
 }
 
 func MakeUTXOInputs(consumables ...*ConsumableOutput) (ledgerstate.Inputs, []ledgerstate.Output) {
-	retInputs := make(ledgerstate.Inputs, len(consumables))
-	retConsumedOutputs := make([]ledgerstate.Output, len(consumables))
+	inputs := make(ledgerstate.Inputs, len(consumables))
+	origOrderOfInputs := make([]ledgerstate.OutputID, len(inputs))
 	for i, out := range consumables {
-		retInputs[i] = ledgerstate.NewUTXOInput(out.output.ID())
-		retConsumedOutputs[i] = out.output
+		inp := ledgerstate.NewUTXOInput(out.output.ID())
+		origOrderOfInputs[i] = inp.ReferencedOutputID()
+		inputs[i] = inp
 	}
-	return retInputs, retConsumedOutputs
+	retInputs := ledgerstate.NewInputs(inputs...)
+	if len(retInputs) != len(origOrderOfInputs) {
+		panic("duplicate inputs")
+	}
+	permutation := make([]int, len(origOrderOfInputs))
+	for i := range retInputs {
+		permutation[i] = getInputIndex(retInputs, origOrderOfInputs[i])
+	}
+	// Sorts!!! So we have to track corresponding outputs too
+	retConsumedOutputs := make([]ledgerstate.Output, len(retInputs))
+	for i := range retConsumedOutputs {
+		retConsumedOutputs[i] = consumables[permutation[i]].output
+	}
+	return inputs, retConsumedOutputs
+}
+
+func getInputIndex(inputs ledgerstate.Inputs, oid ledgerstate.OutputID) int {
+	for i := range inputs {
+		inp := inputs[i].(*ledgerstate.UTXOInput)
+		if inp.ReferencedOutputID() == oid {
+			return i
+		}
+	}
+	panic("inconsistency: can't find input index")
 }
 
 func FindChainConsumableInput(aliasAddr ledgerstate.Address, consumables ...*ConsumableOutput) (*ledgerstate.ChainOutput, int, bool) {
