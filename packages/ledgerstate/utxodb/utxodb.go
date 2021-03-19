@@ -28,7 +28,7 @@ func (u *UtxoDB) AddTransaction(tx *ledgerstate.Transaction) error {
 	if err != nil {
 		return err
 	}
-	if err := u.CheckTransaction(tx); err != nil {
+	if err := u.CheckNewTransaction(tx); err != nil {
 		return err
 	}
 	// delete consumed (referenced) outputs from the ledger
@@ -168,32 +168,32 @@ func (u *UtxoDB) checkLedgerBalance() {
 	}
 }
 
-func (u *UtxoDB) collectUnspentOutputsFromInputs(tx *ledgerstate.Transaction) ([]ledgerstate.Output, error) {
-	ret := make([]ledgerstate.Output, len(tx.Essence().Inputs()))
-	for i, inp := range tx.Essence().Inputs() {
+func (u *UtxoDB) CollectUnspentOutputsFromInputs(essence *ledgerstate.TransactionEssence) ([]ledgerstate.Output, error) {
+	ret := make([]ledgerstate.Output, len(essence.Inputs()))
+	for i, inp := range essence.Inputs() {
 		if inp.Type() != ledgerstate.UTXOInputType {
-			return nil, xerrors.New("collectUnspentOutputsFromInputs: wrong input type")
+			return nil, xerrors.New("CollectUnspentOutputsFromInputs: wrong input type")
 		}
 		utxoInp := inp.(*ledgerstate.UTXOInput)
 		var ok bool
 		oid := utxoInp.ReferencedOutputID()
 		if ret[i], ok = u.findUnspentOutputByID(oid); !ok {
-			return nil, xerrors.New("collectUnspentOutputsFromInputs: unspent output does not exist")
+			return nil, xerrors.New("CollectUnspentOutputsFromInputs: unspent output does not exist")
 		}
 		otx, ok := u.getTransaction(oid.TransactionID())
 		if !ok {
-			return nil, xerrors.Errorf("collectUnspentOutputsFromInputs: input transaction not found: %s", oid.TransactionID())
+			return nil, xerrors.Errorf("CollectUnspentOutputsFromInputs: input transaction not found: %s", oid.TransactionID())
 		}
-		if tx.Essence().Timestamp().Before(otx.Essence().Timestamp()) {
-			return nil, xerrors.Errorf("collectUnspentOutputsFromInputs: transaction timestamp is before input timestamp: %s", oid.TransactionID())
+		if essence.Timestamp().Before(otx.Essence().Timestamp()) {
+			return nil, xerrors.Errorf("CollectUnspentOutputsFromInputs: transaction timestamp is before input timestamp: %s", oid.TransactionID())
 		}
 	}
 	return ret, nil
 }
 
-func (u *UtxoDB) collectSpentOutputsFromInputs(tx *ledgerstate.Transaction) ([]ledgerstate.Output, error) {
-	ret := make([]ledgerstate.Output, len(tx.Essence().Inputs()))
-	for i, inp := range tx.Essence().Inputs() {
+func (u *UtxoDB) collectSpentOutputsFromInputs(essence *ledgerstate.TransactionEssence) ([]ledgerstate.Output, error) {
+	ret := make([]ledgerstate.Output, len(essence.Inputs()))
+	for i, inp := range essence.Inputs() {
 		if inp.Type() != ledgerstate.UTXOInputType {
 			return nil, xerrors.New("collectSpentOutputsFromInputs: wrong input type")
 		}
@@ -207,7 +207,7 @@ func (u *UtxoDB) collectSpentOutputsFromInputs(tx *ledgerstate.Transaction) ([]l
 		if !ok {
 			return nil, xerrors.Errorf("collectSpentOutputsFromInputs: input transaction not found: %s", oid.TransactionID())
 		}
-		if tx.Essence().Timestamp().Before(otx.Essence().Timestamp()) {
+		if essence.Timestamp().Before(otx.Essence().Timestamp()) {
 			return nil, xerrors.Errorf("collectSpentOutputsFromInputs: transaction timestamp is before input timestamp: %s", oid.TransactionID())
 		}
 	}
@@ -219,23 +219,23 @@ func (u *UtxoDB) collectSpentOutputsFromInputs(tx *ledgerstate.Transaction) ([]l
 func (u *UtxoDB) CollectOutputsFromInputs(tx *ledgerstate.Transaction) ([]ledgerstate.Output, bool, error) {
 	_, inTheLedger := u.transactions[tx.ID()]
 	if inTheLedger {
-		outs, err := u.collectSpentOutputsFromInputs(tx)
+		outs, err := u.collectSpentOutputsFromInputs(tx.Essence())
 		if err != nil {
 			return nil, true, err
 		}
 		return outs, true, nil
 	}
 	// not in the ledger
-	outs, err := u.collectUnspentOutputsFromInputs(tx)
+	outs, err := u.CollectUnspentOutputsFromInputs(tx.Essence())
 	if err != nil {
 		return nil, false, err
 	}
 	return outs, false, nil
 }
 
-// CheckTransaction checks consistency of the transaction the same way as ledgerstate
-func (u *UtxoDB) CheckTransaction(tx *ledgerstate.Transaction) error {
-	inputs, err := u.collectUnspentOutputsFromInputs(tx)
+// CheckNewTransaction checks consistency of the transaction the same way as ledgerstate
+func (u *UtxoDB) CheckNewTransaction(tx *ledgerstate.Transaction) error {
+	inputs, err := u.CollectUnspentOutputsFromInputs(tx.Essence())
 	if err != nil {
 		return err
 	}
