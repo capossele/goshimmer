@@ -6,6 +6,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func (u *UtxoDB) Supply() uint64 {
+	return u.supply
+}
+
 // IsConfirmed checks if the transaction is in the UTXODB (in the ledger)
 func (u *UtxoDB) IsConfirmed(txid *ledgerstate.TransactionID) bool {
 	u.mutex.Lock()
@@ -160,7 +164,7 @@ func (u *UtxoDB) checkLedgerBalance() {
 		}
 		total += b
 	}
-	if total != Supply {
+	if total != defaultSupply {
 		panic("utxodb: wrong ledger balance")
 	}
 }

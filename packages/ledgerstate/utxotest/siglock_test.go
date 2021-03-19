@@ -10,11 +10,11 @@ import (
 
 func TestSendIotas(t *testing.T) {
 	u := utxodb.New()
-	user1, addr1 := utxodb.NewKeyPairByIndex(1)
+	user1, addr1 := u.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	_, addr2 := utxodb.NewKeyPairByIndex(2)
+	_, addr2 := u.NewKeyPairByIndex(2)
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
@@ -40,11 +40,11 @@ const howMany = uint64(42)
 
 func TestSendIotasMany(t *testing.T) {
 	u := utxodb.New()
-	user1, addr1 := utxodb.NewKeyPairByIndex(1)
+	user1, addr1 := u.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	_, addr2 := utxodb.NewKeyPairByIndex(2)
+	_, addr2 := u.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
@@ -80,11 +80,11 @@ func TestSendIotasMany(t *testing.T) {
 
 func TestSendIotas1FromMany(t *testing.T) {
 	u := utxodb.New()
-	user1, addr1 := utxodb.NewKeyPairByIndex(1)
+	user1, addr1 := u.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2, addr2 := utxodb.NewKeyPairByIndex(2)
+	user2, addr2 := u.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
@@ -172,11 +172,11 @@ func TestSendIotas1FromMany(t *testing.T) {
 
 func TestSendIotasManyFromMany(t *testing.T) {
 	u := utxodb.New()
-	user1, addr1 := utxodb.NewKeyPairByIndex(1)
+	user1, addr1 := u.NewKeyPairByIndex(1)
 	_, err := u.RequestFunds(addr1)
 	require.NoError(t, err)
 
-	user2, addr2 := utxodb.NewKeyPairByIndex(2)
+	user2, addr2 := u.NewKeyPairByIndex(2)
 	require.EqualValues(t, 0, u.BalanceIOTA(addr2))
 
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr1))
