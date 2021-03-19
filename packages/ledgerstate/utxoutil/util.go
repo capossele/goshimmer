@@ -170,15 +170,11 @@ func GetSingleChainedOutput(essence *ledgerstate.TransactionEssence) (*ledgersta
 	panic("shouldn't be here")
 }
 
-// GetSingleSender analyzes inputs and signatures and retrieves single address which is consistent
+// GetSingleSender analyzes transaction and signatures and retrieves single address which is consistent
 // to be a 'sender':
-// - ony one signature block is accepted
-// - if transaction does not contain ChainOutput as input, the address corresponding to the signature is returned
-// - if transaction contain ChainOutput as input, the alias address of the chain is return ed as sender
-func GetSingleSender(tx *ledgerstate.Transaction, inputs []ledgerstate.Output) (ledgerstate.Address, error) {
-	if len(tx.Essence().Inputs()) != len(inputs) {
-		return nil, xerrors.New("GetSingleSender: mismatch between number of inputs in transaction and number of outputs")
-	}
+// if it do not have alias input, the address corresponding to the only signature is returned
+// if it has a single alias input (i.e. output is not an origin) it returns a alias address of the chain
+func GetSingleSender(tx *ledgerstate.Transaction) (ledgerstate.Address, error) {
 	// only accepting one signature in the transaction
 	var sigBlock *ledgerstate.SignatureUnlockBlock
 	for _, blk := range tx.UnlockBlocks() {
@@ -194,33 +190,21 @@ func GetSingleSender(tx *ledgerstate.Transaction, inputs []ledgerstate.Output) (
 	if sigBlock == nil {
 		panic("GetSingleSender: exactly one signature block expected")
 	}
-	var ret ledgerstate.Address
-	for i, out := range inputs {
-		utxoInput, ok := tx.Essence().Inputs()[i].(*ledgerstate.UTXOInput)
-		if !ok {
-			return nil, xerrors.New("GetSingleSender: wrong input type")
-		}
-		if out.ID() != utxoInput.ReferencedOutputID() {
-			return nil, xerrors.New("GetSingleSender: mismatch between outputs and transaction")
-		}
-		checkAgainstAddr := out.Address()
-		if chainInput, ok := out.(*ledgerstate.ChainOutput); ok {
-			checkAgainstAddr = chainInput.GetStateAddress() // returning alias address as sender
-		}
-		if checkAgainstAddr.Type() == ledgerstate.AliasAddressType {
-			continue
-		}
-		if sigBlock.AddressSignatureValid(checkAgainstAddr, tx.Essence().Bytes()) {
-			if ret != nil && !ret.Equals(out.Address()) {
-				return nil, xerrors.New("GetSingleSender: inconsistent sender information 1")
-			}
-			ret = out.Address()
-		}
+	addr, err := ledgerstate.AddressFromSignature(sigBlock.Signature())
+	if err != nil {
+		return nil, err
 	}
-	if ret == nil {
-		return nil, xerrors.New("GetSingleSender: inconsistent sender information 2")
+	chained, err := GetSingleChainedOutput(tx.Essence())
+	if err != nil {
+		return nil, err
 	}
-	return ret, nil
+	if chained == nil || chained.IsOrigin() {
+		// no chained output means the address is the sender
+		// if chained output is origin (i.e. has no corresponding input)
+		// the address is the sender
+		return addr, nil
+	}
+	return chained.GetAliasAddress(), nil
 }
 
 func GetMintedAmounts(tx *ledgerstate.Transaction) map[ledgerstate.Color]uint64 {

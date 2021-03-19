@@ -10,14 +10,14 @@ import (
 )
 
 func TestAliasMint(t *testing.T) {
-	u := utxodb.New()
-	user, addr := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	user, addr := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	_, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	_, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -43,20 +43,20 @@ func TestAliasMint(t *testing.T) {
 	t.Logf("newly created alias address: %s", chained.GetAliasAddress().Base58())
 
 	//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 }
 
 func TestChainForkFail(t *testing.T) {
-	u := utxodb.New()
-	user, addr := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	user, addr := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	userStateControl, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -75,7 +75,7 @@ func TestChainForkFail(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
@@ -144,14 +144,14 @@ func TestChainForkFail(t *testing.T) {
 const chainLength = 10
 
 func TestChain1(t *testing.T) {
-	u := utxodb.New()
-	user, addr := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	user, addr := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	userStateControl, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func TestChain1(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -200,7 +200,7 @@ func TestChain1(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err := u.GetSingleSender(tx)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
 
@@ -210,14 +210,14 @@ func TestChain1(t *testing.T) {
 }
 
 func TestChain3(t *testing.T) {
-	u := utxodb.New()
-	user, addr := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	user, addr := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	userStateControl, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -236,7 +236,7 @@ func TestChain3(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -265,8 +265,7 @@ func TestChain3(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err := u.GetSingleSender(tx)
-		//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr))
 
@@ -286,7 +285,7 @@ func TestChain3(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err = u.GetSingleSender(tx)
+		sender, err = utxoutil.GetSingleSender(tx)
 		//sender, err = utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
@@ -297,14 +296,14 @@ func TestChain3(t *testing.T) {
 }
 
 func TestChainWithExtendedOutput(t *testing.T) {
-	u := utxodb.New()
-	user, addr := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	user, addr := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addr)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addr))
 
-	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	userStateControl, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -323,8 +322,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
-	//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -352,11 +350,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr))
 
@@ -376,11 +370,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err = u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err = utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err = utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
 
@@ -390,15 +380,15 @@ func TestChainWithExtendedOutput(t *testing.T) {
 }
 
 func TestRequestSendingPattern(t *testing.T) {
-	u := utxodb.New()
-	userRequester, addrRequester := utxodb.NewKeyPairByIndex(2)
+	u := utxodb.NewRandom()
+	userRequester, addrRequester := u.NewKeyPairByIndex(2)
 	_, err := u.RequestFunds(addrRequester)
 	require.NoError(t, err)
-	require.EqualValues(t, utxodb.Supply-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
+	require.EqualValues(t, u.Supply()-utxodb.RequestFundsAmount, u.BalanceIOTA(u.GetGenesisAddress()))
 	require.EqualValues(t, utxodb.RequestFundsAmount, u.BalanceIOTA(addrRequester))
 
 	// start chain with 100 iotas on it
-	userStateControl, addrStateControl := utxodb.NewKeyPairByIndex(3)
+	userStateControl, addrStateControl := u.NewKeyPairByIndex(3)
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	require.NoError(t, err)
 
@@ -417,11 +407,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addrRequester))
 
@@ -451,11 +437,7 @@ func TestRequestSendingPattern(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addrRequester))
 	}
@@ -477,11 +459,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err = u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err = utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err = utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(aliasAddress))
 

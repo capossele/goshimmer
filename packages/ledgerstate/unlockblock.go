@@ -228,6 +228,11 @@ func (s *SignatureUnlockBlock) String() string {
 	)
 }
 
+// Signature return the signature itself
+func (s *SignatureUnlockBlock) Signature() Signature {
+	return s.signature
+}
+
 // code contract (make sure the type implements all required methods)
 var _ UnlockBlock = &SignatureUnlockBlock{}
 
