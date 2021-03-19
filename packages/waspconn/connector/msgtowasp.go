@@ -33,9 +33,6 @@ func (wconn *WaspConnector) sendMsgToWasp(msg waspconn.Message) {
 		dataToSend := waspconn.EncodeMsg(&waspconn.WaspMsgChunk{
 			Data: piece,
 		})
-		if err != nil {
-			return
-		}
 		if len(dataToSend) > tangle.MaxMessageSize {
 			wconn.log.Panicf("sendMsgToWasp: internal inconsistency 3 size too big: %d", len(dataToSend))
 		}
@@ -72,11 +69,13 @@ func (wconn *WaspConnector) pushTransaction(txid ledgerstate.TransactionID, chai
 }
 
 func (wconn *WaspConnector) fetchSender(tx *ledgerstate.Transaction) (ledgerstate.Address, error) {
-	inputs, err := wconn.fetchInputs(tx.Essence().Inputs())
-	if err != nil {
-		return nil, err
-	}
-	return utxoutil.GetSingleSender(tx, inputs)
+
+	// TODO no need anymore for 'sender' included into the package with a transaction
+	//inputs, err := wconn.fetchInputs(tx.Essence().Inputs())
+	//if err != nil {
+	//	return nil, err
+	//}
+	return utxoutil.GetSingleSender(tx)
 }
 
 func (wconn *WaspConnector) fetchInputs(outs []ledgerstate.Input) ([]ledgerstate.Output, error) {
