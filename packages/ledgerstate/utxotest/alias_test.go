@@ -43,7 +43,7 @@ func TestAliasMint(t *testing.T) {
 	t.Logf("newly created alias address: %s", chained.GetAliasAddress().Base58())
 
 	//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 }
@@ -75,7 +75,7 @@ func TestChainForkFail(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
@@ -170,7 +170,7 @@ func TestChain1(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -200,7 +200,7 @@ func TestChain1(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err := u.GetSingleSender(tx)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
 
@@ -236,7 +236,7 @@ func TestChain3(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -265,8 +265,7 @@ func TestChain3(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err := u.GetSingleSender(tx)
-		//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr))
 
@@ -286,7 +285,7 @@ func TestChain3(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		sender, err = u.GetSingleSender(tx)
+		sender, err = utxoutil.GetSingleSender(tx)
 		//sender, err = utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
@@ -323,8 +322,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	sender, err := u.GetSingleSender(tx)
-	//sender, err := utxoutil.GetSingleSender(tx, txb.ConsumedOutputs())
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr))
 
@@ -352,11 +350,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr))
 
@@ -376,11 +370,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err = u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err = utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err = utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(aliasAddress))
 
@@ -417,11 +407,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addrRequester))
 
@@ -451,11 +437,7 @@ func TestRequestSendingPattern(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addrRequester))
 	}
@@ -477,11 +459,7 @@ func TestRequestSendingPattern(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err = u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err = utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err = utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(aliasAddress))
 

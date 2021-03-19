@@ -66,11 +66,7 @@ func TestSendIotasMany(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, addr1.Equals(sender))
 	}
@@ -107,11 +103,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr1))
 	}
@@ -133,11 +125,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr2))
 
@@ -158,11 +146,7 @@ func TestSendIotas1FromMany(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err = u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err = utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err = utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr2))
 
@@ -197,11 +181,7 @@ func TestSendIotasManyFromMany(t *testing.T) {
 		err = u.AddTransaction(tx)
 		require.NoError(t, err)
 
-		consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-		require.NoError(t, err)
-		require.True(t, inLedger)
-
-		sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+		sender, err := utxoutil.GetSingleSender(tx)
 		require.NoError(t, err)
 		require.True(t, sender.Equals(addr1))
 	}
@@ -220,11 +200,7 @@ func TestSendIotasManyFromMany(t *testing.T) {
 	err = u.AddTransaction(tx)
 	require.NoError(t, err)
 
-	consumedOutputs, inLedger, err := u.CollectOutputsFromInputs(tx)
-	require.NoError(t, err)
-	require.True(t, inLedger)
-
-	sender, err := utxoutil.GetSingleSender(tx, consumedOutputs)
+	sender, err := utxoutil.GetSingleSender(tx)
 	require.NoError(t, err)
 	require.True(t, sender.Equals(addr2))
 

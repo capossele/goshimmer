@@ -2,7 +2,6 @@ package utxodb
 
 import (
 	"github.com/iotaledger/goshimmer/packages/ledgerstate"
-	"github.com/iotaledger/goshimmer/packages/ledgerstate/utxoutil"
 	"golang.org/x/xerrors"
 )
 
@@ -247,14 +246,6 @@ func (u *UtxoDB) CheckTransaction(tx *ledgerstate.Transaction) error {
 		return xerrors.Errorf("input unlocking failed. Error: %v", err)
 	}
 	return nil
-}
-
-func (u *UtxoDB) GetSingleSender(tx *ledgerstate.Transaction) (ledgerstate.Address, error) {
-	inputs, _, err := u.CollectOutputsFromInputs(tx)
-	if err != nil {
-		return nil, err
-	}
-	return utxoutil.GetSingleSender(tx, inputs)
 }
 
 func (u *UtxoDB) GetChainOutputs(addr ledgerstate.Address) []*ledgerstate.ChainOutput {

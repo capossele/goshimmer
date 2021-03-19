@@ -1013,6 +1013,11 @@ func (c *ChainOutput) GetAliasAddress() *AliasAddress {
 	return &c.aliasAddress
 }
 
+// IsOrigin returns true if it starts the chain
+func (c *ChainOutput) IsOrigin() bool {
+	return c.aliasAddress.IsNil()
+}
+
 // IsSelfGoverned return if
 func (c *ChainOutput) IsSelfGoverned() bool {
 	return c.governingAddress == nil

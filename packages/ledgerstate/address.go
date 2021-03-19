@@ -121,6 +121,17 @@ func AddressFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (address Addre
 	}
 }
 
+// AddressFromSignature returns address corresponding to the signature if it has one (for ed25519 and BLS).
+func AddressFromSignature(sig Signature) (Address, error) {
+	switch s := sig.(type) {
+	case *ED25519Signature:
+		return NewED25519Address(s.PublicKey), nil
+	case *BLSSignature:
+		return NewBLSAddress(s.Signature.PublicKey.Bytes()), nil
+	}
+	return nil, xerrors.New("signature has no corresponding address")
+}
+
 // endregion ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // region ED25519Address ///////////////////////////////////////////////////////////////////////////////////////////////
