@@ -1,6 +1,7 @@
 package ledgerstate
 
 import (
+	"golang.org/x/crypto/blake2b"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
