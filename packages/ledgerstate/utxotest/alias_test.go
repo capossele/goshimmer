@@ -93,7 +93,7 @@ func TestChainForkFail(t *testing.T) {
 	require.EqualValues(t, 1, len(outputs))
 
 	txb = utxoutil.NewBuilder(outputs...)
-	err = txb.AddExtendedOutputSimple(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 200})
+	err = txb.AddExtendedOutputConsume(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 200})
 	require.NoError(t, err)
 	err = txb.AddReminderOutputIfNeeded(addr, nil)
 	require.NoError(t, err)
@@ -256,7 +256,7 @@ func TestChain3(t *testing.T) {
 		// transfer 1 more iota to alias address
 		outputs = u.GetAddressOutputs(addr)
 		txb := utxoutil.NewBuilder(outputs...)
-		err = txb.AddExtendedOutputSimple(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
+		err = txb.AddExtendedOutputConsume(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
 		require.NoError(t, err)
 		err = txb.AddReminderOutputIfNeeded(addr, nil)
 		require.NoError(t, err)
@@ -341,7 +341,7 @@ func TestChainWithExtendedOutput(t *testing.T) {
 		// transfer 1 more iota to alias address
 		outputs = u.GetAddressOutputs(addr)
 		txb = utxoutil.NewBuilder(outputs...)
-		err = txb.AddExtendedOutputSimple(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
+		err = txb.AddExtendedOutputConsume(aliasAddress, nil, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
 		require.NoError(t, err)
 		err = txb.AddReminderOutputIfNeeded(addr, nil)
 		require.NoError(t, err)
@@ -428,7 +428,7 @@ func TestRequestSendingPattern(t *testing.T) {
 		outputs = u.GetAddressOutputs(addrRequester)
 		txb = utxoutil.NewBuilder(outputs...)
 		data := []byte(fmt.Sprintf("#%d", i))
-		err = txb.AddExtendedOutputSimple(aliasAddress, data, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
+		err = txb.AddExtendedOutputConsume(aliasAddress, data, map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 1})
 		require.NoError(t, err)
 		err = txb.AddReminderOutputIfNeeded(addrRequester, nil)
 		require.NoError(t, err)

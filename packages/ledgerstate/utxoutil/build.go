@@ -142,6 +142,43 @@ func (b *Builder) SpendConsumedUnspent() map[ledgerstate.Color]uint64 {
 	return ret
 }
 
+// Spend spends from consumed-unspend. Return an error if not enough funds
+func (b *Builder) Spend(spend map[ledgerstate.Color]uint64) error {
+	// check if enough
+	for color, needed := range spend {
+		available, _ := b.consumedUnspent[color]
+		if available < needed {
+			return xerrors.New("not enough consumed-unspend funds")
+		}
+	}
+	for col, bal := range spend {
+		b.consumedUnspent[col] = b.consumedUnspent[col] - bal
+	}
+	return nil
+}
+
+// AddExtendedOutputSpend adds extended output using unspent amounts and spends it. Fails of not enough.
+// Do not consume inputs
+func (b *Builder) AddExtendedOutputSpend(targetAddress ledgerstate.Address, data []byte, amounts map[ledgerstate.Color]uint64, mint ...uint64) error {
+	for col, needed := range amounts {
+		available, _ := b.consumedUnspent[col]
+		if available < needed {
+			return xerrors.New("not enough consumed-unspent funds")
+		}
+	}
+	if err := b.Spend(amounts); err != nil {
+		return err
+	}
+	output := ledgerstate.NewExtendedLockedOutput(amounts, targetAddress)
+	if err := output.SetPayload(data); err != nil {
+		return err
+	}
+	if err := b.addOutput(output); err != nil {
+		return err
+	}
+	return nil
+}
+
 // prepareColoredBalancesOutput:
 // - ensures enough tokens in unspentAmounts
 // - spends them
@@ -207,7 +244,8 @@ func (b *Builder) AddSigLockedIOTAOutput(targetAddress ledgerstate.Address, amou
 	return nil
 }
 
-func (b *Builder) AddExtendedOutputSimple(targetAddress ledgerstate.Address, data []byte, amounts map[ledgerstate.Color]uint64, mint ...uint64) error {
+// AddExtendedOutputConsume add new output. Ensures enough unspent funds by consuming if necessary
+func (b *Builder) AddExtendedOutputConsume(targetAddress ledgerstate.Address, data []byte, amounts map[ledgerstate.Color]uint64, mint ...uint64) error {
 	balances, err := b.prepareColoredBalancesOutput(amounts, mint...)
 	if err != nil {
 		return err
@@ -233,7 +271,7 @@ func (b *Builder) AddReminderOutputIfNeeded(reminderAddr ledgerstate.Address, da
 		// no need for reminder output
 		return nil
 	}
-	return b.AddExtendedOutputSimple(reminderAddr, data, unspent)
+	return b.AddExtendedOutputConsume(reminderAddr, data, unspent)
 }
 
 // AddNewChainMint creates new self governed chain.
