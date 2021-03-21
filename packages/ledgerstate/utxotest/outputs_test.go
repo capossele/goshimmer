@@ -34,6 +34,13 @@ func TestChainOutputMint(t *testing.T) {
 	out.SetGoverningAddress(addr)
 	require.True(t, out.IsSelfGoverned())
 
+	out, err = ledgerstate.NewChainOutputMint(bals1, addr, []byte("dummy"))
+	require.NoError(t, err)
+	require.True(t, out.IsSelfGoverned())
+	out.SetGoverningAddress(addr)
+	require.True(t, out.IsSelfGoverned())
+	require.EqualValues(t, "dummy", string(out.GetImmutableData()))
+
 	t.Logf("%s", out)
 }
 
@@ -100,6 +107,27 @@ func TestChainOutputMarshal3(t *testing.T) {
 	require.Zero(t, out.Compare(outBack))
 }
 
+func TestChainOutputMarshal4(t *testing.T) {
+	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
+	kp := ed25519.GenerateKeyPair()
+	addr := ledgerstate.NewED25519Address(kp.PublicKey)
+	out, err := ledgerstate.NewChainOutputMint(bals1, addr, []byte("dummy NFT..."))
+	out.SetGoverningAddress(addr)
+	require.NoError(t, err)
+	err = out.SetStateData([]byte("dummy state..."))
+	require.NoError(t, err)
+
+	data := out.Bytes()
+	outBack, _, err := ledgerstate.OutputFromBytes(data)
+	require.NoError(t, err)
+
+	require.EqualValues(t, ledgerstate.AliasAddressType, outBack.Type())
+	_, ok := outBack.(*ledgerstate.ChainOutput)
+	require.True(t, ok)
+
+	require.Zero(t, out.Compare(outBack))
+}
+
 func TestStateTransition1(t *testing.T) {
 	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
 	kp := ed25519.GenerateKeyPair()
@@ -117,6 +145,26 @@ func TestStateTransition1(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, outNext.Compare(outNext1))
 	require.Zero(t, bytes.Compare(outNext.Bytes(), outNext1.Bytes()))
+}
+
+func TestStateTransition2(t *testing.T) {
+	bals1 := map[ledgerstate.Color]uint64{ledgerstate.ColorIOTA: 100}
+	kp := ed25519.GenerateKeyPair()
+	addr := ledgerstate.NewED25519Address(kp.PublicKey)
+	out, err := ledgerstate.NewChainOutputMint(bals1, addr, []byte("dummy NFT"))
+	require.NoError(t, err)
+
+	oid := ledgerstate.NewOutputID(ledgerstate.TransactionID{}, 42)
+	out.SetID(oid)
+
+	outNext := out.NewChainOutputNext()
+
+	require.Zero(t, bytes.Compare(out.GetAliasAddress().Bytes(), outNext.GetAliasAddress().Bytes()))
+	outNext1, _, err := ledgerstate.OutputFromBytes(outNext.Bytes())
+	require.NoError(t, err)
+	require.Zero(t, outNext.Compare(outNext1))
+	require.Zero(t, bytes.Compare(outNext.Bytes(), outNext1.Bytes()))
+	require.EqualValues(t, "dummy NFT", string(outNext.GetImmutableData()))
 }
 
 func TestExtendedOutput(t *testing.T) {

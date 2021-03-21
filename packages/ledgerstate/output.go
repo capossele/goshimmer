@@ -882,9 +882,10 @@ const MaxOutputPayloadSize = 4 * 1024
 
 // flags use to compress serialized bytes
 const (
-	flagChainOutputGovernanceUpdate = 0x01
-	flagChainOutputGovernanceSet    = 0x02
-	flagChainOutputStateDataPresent = 0x04
+	flagChainOutputGovernanceUpdate     = 0x01
+	flagChainOutputGovernanceSet        = 0x02
+	flagChainOutputStateDataPresent     = 0x04
+	flagChainOutputImmutableDataPresent = 0x08
 )
 
 // ChainOutput represents output which defines as AliasAddress.
@@ -903,6 +904,9 @@ type ChainOutput struct {
 	stateAddress Address
 	// optional state metadata. nil means absent
 	stateData []byte
+	// optional immutable data. It is set when ChainOutput is minted and can't be changed since
+	// Useful for NFTs
+	immutableData []byte
 	// if the ChainOutput is chained in the transaction, the flags states if it is updating state or governance data.
 	// unlock validation of the corresponding input depends on it.
 	// The flag is used to prevent a need to check signature each time when checking unlocking mode
@@ -914,16 +918,19 @@ type ChainOutput struct {
 }
 
 // NewChainOutputMint creates new ChainOutput as minting output, i.e. the one which does not contain corresponding input.
-func NewChainOutputMint(balances map[Color]uint64, stateAddr Address) (*ChainOutput, error) {
+func NewChainOutputMint(balances map[Color]uint64, stateAddr Address, immutableData ...[]byte) (*ChainOutput, error) {
 	if !IsAboveDustThreshold(balances) {
 		return nil, xerrors.New("ChainOutput: colored balances are below dust threshold")
 	}
 	if stateAddr == nil || stateAddr.Type() == AliasAddressType {
-		return nil, xerrors.New("ChainOutput: enforcing mandatory state address must be backed by a private key, can't be an alias")
+		return nil, xerrors.New("ChainOutput: mandatory state address must be backed by a private key, can't be an alias")
 	}
 	ret := &ChainOutput{
 		balances:     *NewColoredBalances(balances),
 		stateAddress: stateAddr,
+	}
+	if len(immutableData) > 0 {
+		ret.immutableData = immutableData[0]
 	}
 	if err := ret.checkValidity(); err != nil {
 		return nil, err
@@ -982,6 +989,16 @@ func ChainOutputFromMarshalUtil(marshalUtil *marshalutil.MarshalUtil) (*ChainOut
 		ret.stateData, err = marshalUtil.ReadBytes(int(size))
 		if err != nil {
 			return nil, xerrors.Errorf("ChainOutput: failed to parse state data: %w", err)
+		}
+	}
+	if flags&flagChainOutputImmutableDataPresent != 0 {
+		size, err := marshalUtil.ReadUint16()
+		if err != nil {
+			return nil, xerrors.Errorf("ChainOutput: failed to parse immutable data size: %w", err)
+		}
+		ret.immutableData, err = marshalUtil.ReadBytes(int(size))
+		if err != nil {
+			return nil, xerrors.Errorf("ChainOutput: failed to parse immutable data: %w", err)
 		}
 	}
 	if flags&flagChainOutputGovernanceSet != 0 {
@@ -1063,9 +1080,14 @@ func (c *ChainOutput) SetStateData(data []byte) error {
 	return nil
 }
 
-// GetStatData gets the state data
+// GetStateData gets the state data
 func (c *ChainOutput) GetStateData() []byte {
 	return c.stateData
+}
+
+// GetImmutableData gets the state data
+func (c *ChainOutput) GetImmutableData() []byte {
+	return c.immutableData
 }
 
 // Clone clones the structure
@@ -1076,16 +1098,18 @@ func (c *ChainOutput) Clone() Output {
 func (c *ChainOutput) clone() *ChainOutput {
 	c.mustValidate()
 	ret := &ChainOutput{
-		outputId:     c.outputId,
-		balances:     *c.balances.Clone(),
-		aliasAddress: c.aliasAddress,
-		stateAddress: c.stateAddress.Clone(),
-		stateData:    make([]byte, len(c.stateData)),
+		outputId:      c.outputId,
+		balances:      *c.balances.Clone(),
+		aliasAddress:  c.aliasAddress,
+		stateAddress:  c.stateAddress.Clone(),
+		stateData:     make([]byte, len(c.stateData)),
+		immutableData: make([]byte, len(c.immutableData)),
 	}
 	if c.governingAddress != nil {
 		ret.governingAddress = c.governingAddress.Clone()
 	}
 	copy(ret.stateData, c.stateData)
+	copy(ret.immutableData, c.immutableData)
 	ret.mustValidate()
 	return ret
 }
@@ -1176,6 +1200,10 @@ func (c *ChainOutput) ObjectStorageValue() []byte {
 		ret.WriteUint16(uint16(len(c.stateData))).
 			WriteBytes(c.stateData)
 	}
+	if flags&flagChainOutputImmutableDataPresent != 0 {
+		ret.WriteUint16(uint16(len(c.immutableData))).
+			WriteBytes(c.immutableData)
+	}
 	if flags&flagChainOutputGovernanceSet != 0 {
 		ret.WriteBytes(c.governingAddress.Bytes())
 	}
@@ -1218,7 +1246,12 @@ func (c *ChainOutput) checkValidity() error {
 		return xerrors.New("ChainOutput: state address must not be nil")
 	}
 	if len(c.stateData) > MaxOutputPayloadSize {
-		return xerrors.New("ChainOutput: state data too big")
+		return xerrors.Errorf("ChainOutput: size of the stateData (%d) exceeds maximum allowed (%d)",
+			len(c.immutableData), MaxOutputPayloadSize)
+	}
+	if len(c.immutableData) > MaxOutputPayloadSize {
+		return xerrors.Errorf("ChainOutput: size of the immutableData (%d) exceeds maximum allowed (%d)",
+			len(c.immutableData), MaxOutputPayloadSize)
 	}
 	return nil
 }
@@ -1234,6 +1267,9 @@ func (c *ChainOutput) mustFlags() byte {
 	var ret byte
 	if c.isGovernanceUpdate {
 		ret |= flagChainOutputGovernanceUpdate
+	}
+	if len(c.immutableData) > 0 {
+		ret |= flagChainOutputImmutableDataPresent
 	}
 	if len(c.stateData) > 0 {
 		ret |= flagChainOutputStateDataPresent
@@ -1339,6 +1375,13 @@ func (c *ChainOutput) validateStateTransition(chained *ChainOutput, unlockedStat
 	return nil
 }
 
+func (c *ChainOutput) validateImmutableData(chained *ChainOutput) error {
+	if bytes.Compare(c.immutableData, chained.immutableData) != 0 {
+		return xerrors.New("can't modify immutable data")
+	}
+	return nil
+}
+
 // validateGovernanceChange checks if the parte controlled by the governing party is valid
 func (c *ChainOutput) validateGovernanceChange(chained *ChainOutput, unlockedGovernance bool) error {
 	if unlockedGovernance {
@@ -1380,6 +1423,9 @@ func (c *ChainOutput) validateTransition(tx *Transaction, unlockedState, unlocke
 	}
 
 	if chained != nil {
+		if err := c.validateImmutableData(chained); err != nil {
+			return err
+		}
 		if !c.GetAliasAddress().Equals(c.GetAliasAddress()) {
 			return xerrors.New("chain alias address can't be modified")
 		}
