@@ -187,7 +187,12 @@ func (b *Builder) prepareColoredBalancesOutput(amounts map[ledgerstate.Color]uin
 	if len(amounts) == 0 {
 		return nil, xerrors.New("AddSigLockedColoredOutput: no tokens to transfer")
 	}
-	// check if it is enough wasConsumed unspent amounts
+	minting := len(mint) > 0 && mint[0] > 0
+	iotas, _ := amounts[ledgerstate.ColorIOTA]
+	if minting && iotas < mint[0] {
+		return nil, xerrors.Errorf("not enough iotas (%d) to mint %d new colored tokens", iotas, mint[0])
+	}
+	// check if it is enough consumed unspent amounts
 	if !b.ensureEnoughUnspendAmounts(amounts) {
 		return nil, xerrors.New("AddSigLockedColoredOutput: not enough balance")
 	}
@@ -199,14 +204,11 @@ func (b *Builder) prepareColoredBalancesOutput(amounts map[ledgerstate.Color]uin
 		}
 		amountsCopy[col] = bal
 	}
-	iotas, _ := amountsCopy[ledgerstate.ColorIOTA]
-	if len(mint) > 0 && mint[0] > iotas {
-		return nil, xerrors.Errorf("can't mint more tokens (%d) than wasConsumed iotas (%d)", iotas, mint[0])
-	}
-	if len(mint) > 0 && mint[0] > 0 {
+	if minting {
 		amountsCopy[ledgerstate.ColorMint] = mint[0]
-		if iotas > mint[0] {
-			amountsCopy[ledgerstate.ColorIOTA] = iotas - mint[0]
+		amountsCopy[ledgerstate.ColorIOTA] = iotas - mint[0]
+		if amountsCopy[ledgerstate.ColorIOTA] == 0 {
+			delete(amountsCopy, ledgerstate.ColorIOTA)
 		}
 	}
 	return amountsCopy, nil
